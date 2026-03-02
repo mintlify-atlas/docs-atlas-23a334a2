@@ -1,0 +1,130 @@
+{
+  "projectType": "saas",
+  "projectName": "Remotion Prompt to Motion Graphics",
+  "projectDescription": "AI-powered SaaS platform that transforms natural language prompts into Remotion video components using GPT-5 and a modular skills system.",
+  "theme": "aspen",
+  "primaryColor": "#6366f1",
+  "lightColor": null,
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/prompt-validation",
+              "features/skills-system",
+              "features/code-generation",
+              "features/live-preview"
+            ]
+          },
+          {
+            "group": "Skills Reference",
+            "pages": [
+              "skills/overview",
+              "skills/charts",
+              "skills/typography",
+              "skills/messaging",
+              "skills/transitions",
+              "skills/sequencing",
+              "skills/spring-physics",
+              "skills/social-media",
+              "skills/3d"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/aws-lambda-setup",
+              "deployment/rendering-videos",
+              "deployment/configuration"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/prompting-best-practices",
+              "guides/working-with-images",
+              "guides/customizing-animations",
+              "guides/error-handling"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Generation API",
+            "pages": [
+              "api/generate-endpoint",
+              "api/request-format",
+              "api/response-format",
+              "api/streaming"
+            ]
+          },
+          {
+            "group": "Lambda API",
+            "pages": [
+              "api/lambda-render",
+              "api/lambda-progress"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Examples",
+        "groups": [
+          {
+            "group": "Example Gallery",
+            "pages": [
+              "examples/overview",
+              "examples/typewriter-effect",
+              "examples/chat-bubbles",
+              "examples/metric-counters",
+              "examples/bar-charts",
+              "examples/dvd-screensaver"
+            ]
+          },
+          {
+            "group": "Code Snippets",
+            "pages": [
+              "examples/animated-shapes",
+              "examples/histogram",
+              "examples/progress-bar",
+              "examples/lottie-animations"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "AI-powered code generation from natural language prompts",
+    "Modular skills system for domain-specific animation guidance",
+    "Real-time live preview with Remotion Player",
+    "AWS Lambda integration for cloud video rendering",
+    "Intelligent prompt validation and skill detection",
+    "Support for multiple GPT-5 models with reasoning levels",
+    "Built-in code editor with Monaco and syntax highlighting",
+    "Pre-built animation examples and templates"
+  ],
+  "publicApiSurface": [
+    "POST /api/generate - Generate Remotion code from prompts",
+    "POST /api/lambda/render - Trigger cloud video rendering",
+    "GET /api/lambda/progress - Check render job status",
+    "Skills: charts, typography, messaging, transitions, sequencing, spring-physics, social-media, 3d",
+    "Example animations: typewriter, chat-bubbles, counters, bar-chart, dvd-screensaver",
+    "Code snippets: histogram, progress-bar, lottie-animation, word-carousel, falling-spheres"
+  ]
+}
