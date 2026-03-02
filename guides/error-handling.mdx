@@ -1,0 +1,419 @@
+---
+title: Error Handling and Self-Healing
+description: How the system automatically corrects compilation errors and edit failures through intelligent retry loops
+---
+
+Remotion Prompt to Motion Graphics includes an advanced error correction system that automatically detects and fixes issues with generated code. This guide explains how the self-healing mechanism works and what to do when errors occur.
+
+## How Error Correction Works
+
+When generated code fails to compile or an edit operation fails, the system automatically attempts to fix the issue without user intervention.
+
+### The Self-Healing Loop
+
+```
+1. Generate code or apply edit
+2. Attempt compilation
+3. If error detected → Send error context back to AI
+4. AI analyzes error and generates fix
+5. Apply fix and retry compilation
+6. Repeat up to max attempts (usually 3)
+```
+
+<Note>
+This happens transparently in the background. You'll see a brief "fixing..." indicator while the system self-corrects.
+</Note>
+
+## Types of Errors
+
+The system handles two categories of errors differently:
+
+### 1. Compilation Errors
+
+These occur when generated code has syntax or semantic issues:
+
+- **Syntax errors** - Missing brackets, semicolons, unclosed tags
+- **Invalid JSX** - Malformed component structure, invalid attributes  
+- **Undefined variables** - Using variables that weren't declared
+- **Type errors** - TypeScript type mismatches
+- **Import errors** - Importing non-existent modules
+
+**Error correction context sent to AI:**
+
+```
+COMPILATION ERROR (ATTEMPT 1/3)
+The previous code failed to compile with this error:
+```
+[error message]
+```
+
+CRITICAL: Fix this compilation error. Common issues include:
+- Syntax errors (missing brackets, semicolons)
+- Invalid JSX (unclosed tags, invalid attributes)  
+- Undefined variables or imports
+- TypeScript type errors
+
+Focus ONLY on fixing the error. Do not make other changes.
+```
+
+<Tip>
+The system includes the exact error message and line number from the compiler, allowing the AI to make precise corrections.
+</Tip>
+
+### 2. Edit Operation Failures
+
+These occur during targeted edits when the AI can't find the exact code to modify:
+
+**"Old string not found" error:**
+The `old_string` specified in the edit doesn't exist in the current code.
+
+**"Ambiguous match" error:**  
+The `old_string` appears multiple times, making the edit target unclear.
+
+**Error correction context sent to AI:**
+
+```
+EDIT FAILED (ATTEMPT 1/3)
+Edit 2 failed: Could not find the specified text
+
+The previous edit attempt failed. Here's what was tried:
+- Description: Update background color
+- Tried to find: `const COLOR_BACKGROUND = "#1a1a2e";`
+- Wanted to replace with: `const COLOR_BACKGROUND = "#000000";`
+
+The old_string was either not found or matched multiple locations. 
+You MUST include more surrounding context to make the match unique.
+
+CRITICAL: Your previous edit target was ambiguous or not found. To fix this:
+1. Include MORE surrounding code context in old_string to make it unique
+2. Make sure old_string matches the code EXACTLY (including whitespace)
+3. If the code structure changed, look at the current code carefully
+```
+
+The system includes:
+- The failed edit details (`old_string`, `new_string`, `description`)  
+- Specific guidance on how to fix the issue
+- The current code state for reference
+
+<Warning>
+Edit failures are usually caused by whitespace mismatches or insufficient context. The AI learns from the error and includes more surrounding code in the retry.
+</Warning>
+
+## Maximum Retry Attempts
+
+The system limits retry attempts to prevent infinite loops:
+
+```tsx Error Correction Interface
+interface ErrorCorrectionContext {
+  error: string;              // The error message
+  attemptNumber: number;      // Current attempt (1, 2, 3...)
+  maxAttempts: number;        // Usually 3
+  failedEdit?: {              // Only for edit failures
+    description: string;
+    old_string: string;
+    new_string: string;
+  };
+}
+```
+
+**Default limits:**
+- **Compilation errors:** 3 attempts
+- **Edit failures:** 3 attempts
+
+If all attempts fail, the error is surfaced to the user with the final error message.
+
+<Note>
+In practice, most errors are fixed on the first retry. The AI learns from the error context and makes targeted corrections.
+</Note>
+
+## Common Error Scenarios
+
+### Scenario 1: Missing Import
+
+**Generated code:**
+```tsx
+export const MyAnimation = () => {
+  const scale = spring({ frame, fps }); // ✗ spring not imported
+  // ...
+};
+```
+
+**Compilation error:**
+```
+ReferenceError: spring is not defined
+```
+
+**Self-healing fix:**
+```tsx
+import { useCurrentFrame, useVideoConfig, spring } from 'remotion'; // ✓ Added spring
+
+export const MyAnimation = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const scale = spring({ frame, fps });
+  // ...
+};
+```
+
+### Scenario 2: Unclosed JSX Tag
+
+**Generated code:**
+```tsx
+return (
+  <AbsoluteFill style={{ backgroundColor: COLOR_BG }}>
+    <div style={{ fontSize: 48 }}>Hello</div> // ✗ Missing closing tag
+  </AbsoluteFill>
+);
+```
+
+**Compilation error:**
+```
+SyntaxError: Unexpected token
+```
+
+**Self-healing fix:**
+```tsx  
+return (
+  <AbsoluteFill style={{ backgroundColor: COLOR_BG }}>
+    <div style={{ fontSize: 48 }}>Hello</div> {/* ✓ Properly closed */}
+  </AbsoluteFill>
+);
+```
+
+### Scenario 3: Ambiguous Edit Target
+
+**Current code:**
+```tsx
+const COLOR_BACKGROUND = "#000000";
+const COLOR_TEXT = "#FFFFFF";
+const COLOR_PRIMARY = "#3B82F6";
+```
+
+**Failed edit:**
+```json
+{
+  "old_string": "\"#000000\"",  // ✗ Appears multiple times in code
+  "new_string": "\"#1a1a2e\""
+}
+```
+
+**Error:**
+```
+Edit 1 failed: Found 3 matches. The edit target is ambiguous.
+```
+
+**Self-healing fix:**
+```json
+{
+  "old_string": "const COLOR_BACKGROUND = \"#000000\";", // ✓ Unique match
+  "new_string": "const COLOR_BACKGROUND = \"#1a1a2e\";"
+}
+```
+
+### Scenario 4: Reserved Variable Name
+
+**Generated code:**
+```tsx
+const spring = 0.5; // ✗ Shadows spring() function
+const scale = spring({ frame, fps }); // Error: spring is not a function
+```
+
+**Self-healing fix:**
+```tsx  
+const springStrength = 0.5; // ✓ Renamed to avoid conflict
+const scale = spring({ frame, fps });
+```
+
+## Error Messages You Might See
+
+### During Code Generation
+
+<Warning>
+**"No valid motion graphics prompt"**
+
+The validation classifier rejected your prompt because it doesn't describe visual/animated content.
+
+**Solution:** Rewrite your prompt to clearly describe an animation or visual element.
+</Warning>
+
+<Warning>
+**"Something went wrong while trying to reach OpenAI APIs"**  
+
+Network or API error prevented code generation.
+
+**Solution:** Check your internet connection and API key configuration. Retry the request.
+</Warning>
+
+### During Follow-Up Edits
+
+<Warning>
+**"Edit X failed: Could not find the specified text"**
+
+The AI couldn't locate the exact code to modify.
+
+**Solution:** This triggers automatic retry with more context. If all retries fail, try rephrasing your edit request or make the change manually in Monaco.
+</Warning>
+
+<Warning>
+**"Invalid AI response: missing required fields"**
+
+The AI returned a malformed response structure.
+
+**Solution:** Retry the edit request. This is rare and usually resolves on retry.
+</Warning>
+
+### During Compilation
+
+<Warning>
+**"SyntaxError: Unexpected token"**
+
+Malformed JavaScript/JSX syntax.
+
+**Solution:** The system auto-corrects syntax errors. If it fails after 3 attempts, check the Monaco editor for red error indicators showing the exact location.
+</Warning>
+
+<Warning>
+**"ReferenceError: X is not defined"**  
+
+Using a variable or function that wasn't imported or declared.
+
+**Solution:** Auto-corrected by adding missing imports. If it persists, manually add the import or declare the variable.
+</Warning>
+
+## Manual Error Recovery
+
+If auto-correction fails, you can manually fix errors in Monaco:
+
+### Step 1: Identify the Error
+
+Look for red squiggly underlines in the code editor. Hover over them to see the error message.
+
+### Step 2: Check Common Issues
+
+- **Missing imports** - Add to import statement at top
+- **Typos** - Check variable names match their declarations  
+- **Unclosed tags** - Ensure all JSX tags are properly closed
+- **Missing semicolons** - Add where needed (though usually optional)
+
+### Step 3: Test the Fix
+
+Save the file (happens automatically) and check if the preview updates without errors.
+
+<Tip>
+Use Ctrl+F in Monaco to find specific error locations mentioned in error messages.
+</Tip>
+
+## Best Practices to Avoid Errors
+
+### Write Clear Edit Requests
+
+Instead of:
+```text
+"change the color"
+```
+
+Be specific:
+```text  
+"change the background color to navy blue (#001F3F)"
+```
+
+### Avoid Conflicting Edits
+
+Don't request changes that contradict existing code structure:
+
+```text Bad Request
+"make it a bar chart" (when it's currently a pie chart)
+```
+
+```text Good Request
+"convert from pie chart to bar chart with the same data"
+```
+
+### Test Incrementally
+
+Make one change at a time rather than requesting multiple simultaneous edits:
+
+```text Instead of:
+"change colors, add animation, modify text, and adjust timing"
+
+Do:
+1. "change background to dark blue"
+2. "add spring bounce to entrance"  
+3. "change title to 'Welcome'"
+4. "make animation 50% slower"
+```
+
+## Understanding Edit Operation Structure
+
+For transparency, here's how targeted edits work internally:
+
+```tsx Edit Operation Type
+type EditOperation = {
+  description: string;    // What this edit does
+  old_string: string;     // Exact string to find
+  new_string: string;     // Replacement string
+  lineNumber?: number;    // Calculated after successful match
+};
+```
+
+**The edit application process:**
+
+```tsx Simplified Algorithm
+function applyEdits(code: string, edits: EditOperation[]) {
+  let result = code;
+  
+  for (const edit of edits) {
+    // Check if old_string exists
+    if (!result.includes(edit.old_string)) {
+      return { success: false, error: "Could not find the specified text" };
+    }
+    
+    // Check for multiple matches (ambiguous)
+    const matches = result.split(edit.old_string).length - 1;
+    if (matches > 1) {
+      return { success: false, error: `Found ${matches} matches. Target is ambiguous.` };
+    }
+    
+    // Apply the edit
+    result = result.replace(edit.old_string, edit.new_string);
+  }
+  
+  return { success: true, result };
+}
+```
+
+<Note>
+Edits are applied sequentially. Each edit operates on the result of the previous edit, so order matters.
+</Note>
+
+## Advanced: Error Correction Prompting
+
+The system uses specialized prompts for error correction:
+
+**For compilation errors:**
+```
+Focus ONLY on fixing the error. Do not make other changes.
+```
+
+This prevents the AI from "improving" code when it should just fix the bug.
+
+**For edit failures:**  
+```
+You MUST include more surrounding context to make the match unique.
+```
+
+This guides the AI to provide larger `old_string` values that won't match ambiguously.
+
+## Summary
+
+**Key points about error handling:**
+
+- The system automatically retries failed operations up to 3 times
+- Compilation errors include exact error messages and line numbers
+- Edit failures provide the failed edit details for context-aware retry
+- Most errors are fixed on first retry without user intervention  
+- Manual fixes in Monaco are always an option if auto-correction fails
+
+<Tip>
+If you encounter persistent errors, try simplifying your request or breaking it into smaller edits. The system handles incremental changes more reliably than large complex modifications.
+</Tip>

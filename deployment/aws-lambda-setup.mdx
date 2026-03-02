@@ -1,0 +1,156 @@
+---
+title: AWS Lambda Setup
+description: Set up AWS Lambda infrastructure for serverless video rendering with Remotion
+---
+
+This guide walks you through deploying the AWS Lambda infrastructure needed to render videos in the cloud using Remotion Lambda.
+
+## Prerequisites
+
+Before deploying to AWS Lambda, you need:
+
+- An AWS account with appropriate permissions
+- AWS access credentials (Access Key ID and Secret Access Key)
+- Node.js installed locally
+
+## Environment Variables
+
+First, configure your AWS credentials in your `.env` file:
+
+<ParamField path="REMOTION_AWS_ACCESS_KEY_ID" type="string" required>
+  Your AWS Access Key ID. This is used to authenticate with AWS services.
+</ParamField>
+
+<ParamField path="REMOTION_AWS_SECRET_ACCESS_KEY" type="string" required>
+  Your AWS Secret Access Key. Keep this secure and never commit it to version control.
+</ParamField>
+
+<ParamField path="OPENAI_API_KEY" type="string" required>
+  Your OpenAI API key for generating video content from prompts.
+</ParamField>
+
+## Deployment Process
+
+The deployment script (`deploy.mjs`) handles the complete setup automatically:
+
+<Steps>
+  <Step title="Verify AWS Credentials">
+    The script checks that your AWS credentials are properly configured:
+    
+    ```javascript
+    if (!process.env.AWS_ACCESS_KEY_ID && !process.env.REMOTION_AWS_ACCESS_KEY_ID) {
+      console.log('The environment variable "REMOTION_AWS_ACCESS_KEY_ID" is not set.');
+      process.exit(0);
+    }
+    ```
+    
+    If credentials are missing, the deployment will exit with instructions to complete the Lambda setup.
+  </Step>
+
+  <Step title="Deploy Lambda Function">
+    The script deploys a Lambda function with the configured resources:
+    
+    ```javascript
+    const { functionName, alreadyExisted } = await deployFunction({
+      createCloudWatchLogGroup: true,
+      memorySizeInMb: RAM,
+      region: REGION,
+      timeoutInSeconds: TIMEOUT,
+      diskSizeInMb: DISK,
+    });
+    ```
+    
+    This creates or updates the Lambda function with:
+    - **Memory**: 3009 MB (configured in `config.mjs`)
+    - **Timeout**: 240 seconds (4 minutes)
+    - **Disk**: 10240 MB (10 GB)
+    - **Region**: us-east-1 (configurable)
+    - **CloudWatch Logs**: Automatically created for monitoring
+  </Step>
+
+  <Step title="Create or Get S3 Bucket">
+    An S3 bucket is created to store rendered videos and deployment artifacts:
+    
+    ```javascript
+    const { bucketName, alreadyExisted } = await getOrCreateBucket({
+      region: REGION,
+    });
+    ```
+    
+    The bucket is automatically named and configured for the specified region.
+  </Step>
+
+  <Step title="Deploy Remotion Site">
+    Your Remotion composition is bundled and deployed to the S3 bucket:
+    
+    ```javascript
+    const { siteName } = await deploySite({
+      bucketName,
+      entryPoint: path.join(process.cwd(), "src", "remotion", "index.ts"),
+      siteName: SITE_NAME,
+      region: REGION,
+      options: { webpackOverride },
+    });
+    ```
+    
+    This bundles your video templates and makes them available for Lambda rendering.
+  </Step>
+</Steps>
+
+## Running the Deployment
+
+Execute the deployment script:
+
+```bash
+node deploy.mjs
+```
+
+You'll see output like:
+
+```
+Selected region: us-east-1
+Deploying Lambda function... remotionlambda-mem3009mb-disk10240mb-240sec (created)
+Ensuring bucket... remotionlambda-useast1-xxxxxx (created)
+Deploying site... my-next-app
+
+You now have everything you need to render videos!
+```
+
+## When to Re-deploy
+
+Re-run the deployment command when you:
+
+1. Changed the video template or composition
+2. Modified `config.mjs` settings
+3. Upgraded Remotion to a newer version
+
+<Note>
+  The deployment script is idempotent - it will update existing resources rather than creating duplicates.
+</Note>
+
+## Next Steps
+
+Once deployed, you can:
+- [Render videos using the Lambda API](/deployment/rendering-videos)
+- [Configure Lambda resources](/deployment/configuration)
+
+## Troubleshooting
+
+### Missing Credentials
+
+If you see an error about missing credentials, ensure your `.env` file contains:
+
+```bash
+REMOTION_AWS_ACCESS_KEY_ID=your_access_key_here
+REMOTION_AWS_SECRET_ACCESS_KEY=your_secret_key_here
+```
+
+### Permission Errors
+
+Your AWS IAM user needs permissions for:
+- Lambda (create/update functions)
+- S3 (create buckets, upload objects)
+- CloudWatch Logs (create log groups)
+- IAM (create roles for Lambda execution)
+
+See the [official Remotion Lambda setup guide](https://www.remotion.dev/docs/lambda/setup) for detailed IAM policy requirements.

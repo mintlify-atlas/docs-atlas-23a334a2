@@ -1,0 +1,161 @@
+---
+title: Prompt validation
+description: Learn how the system filters and validates user prompts to ensure they match motion graphics use cases.
+---
+
+Before any code generation occurs, Remotion Prompt to Motion Graphics validates the user's prompt to ensure it's asking for motion graphics content. This validation step prevents wasted API calls and provides immediate feedback when prompts are out of scope.
+
+## How validation works
+
+The validation happens in the API route at `src/app/api/generate/route.ts` using a dedicated validation prompt and structured output with Zod schemas.
+
+### Validation prompt
+
+The system uses a specialized prompt to classify whether a user request is valid for motion graphics generation:
+
+```typescript
+const VALIDATION_PROMPT = `You are a prompt classifier for a motion graphics generation tool.
+
+Determine if the user's prompt is asking for motion graphics/animation content 
+that can be created as a React/Remotion component.
+
+VALID prompts include requests for:
+- Animated text, titles, or typography
+- Data visualizations (charts, graphs, progress bars)
+- UI animations (buttons, cards, transitions)
+- Logo animations or brand intros
+- Social media content (stories, reels, posts)
+- Explainer animations
+- Kinetic typography
+- Abstract motion graphics
+- Animated illustrations
+- Product showcases
+- Countdown timers
+- Loading animations
+- Any visual/animated content
+
+INVALID prompts include:
+- Questions (e.g., "What is 2+2?", "How do I...")
+- Requests for text/written content (poems, essays, stories, code explanations)
+- Conversations or chat
+- Non-visual tasks (calculations, translations, summaries)
+- Requests completely unrelated to visual content
+
+Return true if the prompt is valid for motion graphics generation, false otherwise.`;
+```
+
+From `src/app/api/generate/route.ts:11-37`
+
+### Implementation
+
+The validation runs before skill detection and code generation:
+
+```typescript
+// Validate the prompt first (skip for follow-ups with existing code)
+if (!isFollowUp) {
+  try {
+    const validationResult = await generateObject({
+      model: openai("gpt-5.2"),
+      system: VALIDATION_PROMPT,
+      prompt: `User prompt: "${prompt}"`,
+      schema: z.object({ valid: z.boolean() }),
+    });
+
+    if (!validationResult.object.valid) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "No valid motion graphics prompt. Please describe an animation or visual content you'd like to create.",
+          type: "validation",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  } catch (validationError) {
+    // On validation error, allow through rather than blocking
+    console.error("Validation error:", validationError);
+  }
+}
+```
+
+From `src/app/api/generate/route.ts:331-354`
+
+## When validation is skipped
+
+Validation is **only applied to initial prompts**, not follow-up edits. Once the user has generated valid code and is making iterative changes, validation is skipped because:
+
+- The conversation already has valid motion graphics context
+- Follow-up prompts like "make it blue" or "speed it up" wouldn't pass validation on their own
+- It improves performance by reducing unnecessary API calls
+
+## Error handling
+
+If validation fails, the user receives an error of type `"validation"` with a clear message:
+
+```json
+{
+  "error": "No valid motion graphics prompt. Please describe an animation or visual content you'd like to create.",
+  "type": "validation"
+}
+```
+
+The error type allows the frontend to display validation errors differently from compilation or API errors.
+
+<Note>
+  If the validation API call itself fails (network error, timeout, etc.), the system allows the prompt through rather than blocking it. This fail-open approach prevents false negatives from blocking valid requests.
+</Note>
+
+## Valid prompt examples
+
+<AccordionGroup>
+  <Accordion title="Data visualizations">
+    - "Create a bar chart showing monthly revenue"
+    - "Animated pie chart with 4 segments"
+    - "Progress bar loading from 0 to 100%"
+    - "Line graph with smooth transitions"
+  </Accordion>
+
+  <Accordion title="Typography animations">
+    - "Typewriter effect with blinking cursor"
+    - "Word carousel rotating between 3 words"
+    - "Kinetic title that zooms in"
+    - "Animated subtitle with highlight effect"
+  </Accordion>
+
+  <Accordion title="Social media content">
+    - "Instagram story template"
+    - "YouTube intro with logo reveal"
+    - "TikTok countdown timer"
+    - "LinkedIn post animation"
+  </Accordion>
+
+  <Accordion title="UI animations">
+    - "Button with loading spinner"
+    - "Card flip animation"
+    - "Menu slide-in transition"
+    - "Modal fade in effect"
+  </Accordion>
+</AccordionGroup>
+
+## Invalid prompt examples
+
+<AccordionGroup>
+  <Accordion title="Questions">
+    - "How do I use Remotion?"
+    - "What's the best animation library?"
+    - "Can you explain how React works?"
+  </Accordion>
+
+  <Accordion title="Non-visual content">
+    - "Write me a poem"
+    - "Translate this to Spanish"
+    - "Calculate the area of a circle"
+    - "Summarize this article"
+  </Accordion>
+
+  <Accordion title="Conversations">
+    - "Hello, how are you?"
+    - "Tell me a joke"
+    - "What's the weather?"
+  </Accordion>
+</AccordionGroup>

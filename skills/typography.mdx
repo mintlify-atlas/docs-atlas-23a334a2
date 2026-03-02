@@ -1,0 +1,220 @@
+---
+title: Typography & Text Animation
+description: Best practices for kinetic typography, typewriter effects, and text animations in Remotion
+---
+
+<Note>
+  **Impact:** HIGH - Fixes common text animation bugs and significantly improves readability
+</Note>
+
+This skill covers patterns for professional text animations, including typewriter effects, cursor blinking, word carousels, and text highlighting.
+
+## Typewriter Effect - Use String Slicing
+
+Always use string slicing for typewriter effects. Never use per-character opacity.
+
+<CodeGroup>
+```tsx Incorrect (per-character opacity - breaks cursor positioning)
+{
+  text
+    .split("")
+    .map((char, i) => (
+      <span style={{ opacity: i < typedCount ? 1 : 0 }}>{char}</span>
+    ));
+}
+<span>|</span>;
+```
+
+```tsx Correct (string slicing - cursor follows text)
+const typedText = FULL_TEXT.slice(0, typedChars);
+
+<span>{typedText}</span>
+<span style={{ opacity: caretOpacity }}>▌</span>
+```
+</CodeGroup>
+
+<Warning>
+  Per-character opacity creates invisible characters that still occupy space, causing the cursor to appear in the wrong position. Use `.slice()` instead.
+</Warning>
+
+## Cursor Blink - Use Smooth Interpolation
+
+Blinking cursors should fade smoothly, not flash on/off abruptly.
+
+<CodeGroup>
+```tsx Incorrect (abrupt blink)
+const caretVisible = Math.floor(frame / 15) % 2 === 0;
+<span style={{ opacity: caretVisible ? 1 : 0 }}>|</span>;
+```
+
+```tsx Correct (smooth blink)
+const CURSOR_BLINK_FRAMES = 16;
+const caretOpacity = interpolate(
+  frame % CURSOR_BLINK_FRAMES,
+  [0, CURSOR_BLINK_FRAMES / 2, CURSOR_BLINK_FRAMES],
+  [1, 0, 1],
+  { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+);
+
+<span style={{ opacity: caretOpacity }}>▌</span>;
+```
+</CodeGroup>
+
+<Tip>
+  Smooth fading creates a more polished, professional appearance compared to harsh on/off toggling.
+</Tip>
+
+## Word Carousel - Stable Width Container
+
+Prevent layout shifts by using the longest word to set container width.
+
+<CodeGroup>
+```tsx Incorrect (width jumps between words)
+<div style={{ position: "relative" }}>
+  <span>{WORDS[currentIndex]}</span>
+</div>
+```
+
+```tsx Correct (stable width from longest word)
+const longestWord = WORDS.reduce(
+  (a, b) => (a.length >= b.length ? a : b),
+  WORDS[0],
+);
+
+<div style={{ position: "relative" }}>
+  <div style={{ visibility: "hidden" }}>{longestWord}</div>
+  <div style={{ position: "absolute", left: 0, top: 0 }}>
+    {WORDS[currentIndex]}
+  </div>
+</div>;
+```
+</CodeGroup>
+
+<Accordion title="How does the hidden element technique work?">
+  The invisible element reserves space based on the longest word, while the absolutely positioned visible word sits on top. This prevents the container from resizing as words change, eliminating jarring layout shifts.
+</Accordion>
+
+## Text Highlight - Two Layer Crossfade
+
+Use overlapping layers for smooth highlight transitions.
+
+```tsx
+const typedOpacity = interpolate(
+  frame,
+  [highlightStart - 8, highlightStart + 8],
+  [1, 0],
+  { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+);
+const finalOpacity = interpolate(
+  frame,
+  [highlightStart, highlightStart + 8],
+  [0, 1],
+  { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+);
+
+{/* Typing layer */}
+<div style={{ opacity: typedOpacity }}>{typedText}</div>;
+
+{/* Final layer with highlight */}
+<div style={{ position: "absolute", inset: 0, opacity: finalOpacity }}>
+  <span>{preText}</span>
+  <span style={{ backgroundColor: COLOR_HIGHLIGHT }}>{HIGHLIGHT_WORD}</span>
+  <span>{postText}</span>
+</div>;
+```
+
+<Note>
+  The 8-frame overlap creates a smooth crossfade between the typing state and the highlighted state, avoiding abrupt transitions.
+</Note>
+
+## Key Patterns
+
+<AccordionGroup>
+  <Accordion title="String Slicing" icon="scissors">
+    For typewriter effects, always use:
+    
+    ```tsx
+    const displayed = fullText.slice(0, charCount);
+    ```
+    
+    **Never** use per-character opacity or visibility.
+  </Accordion>
+  
+  <Accordion title="Smooth Blinking" icon="eye">
+    Use interpolation with at least 3 keyframes for smooth fade:
+    
+    ```tsx
+    interpolate(
+      frame % CYCLE,
+      [0, CYCLE / 2, CYCLE],
+      [1, 0, 1]
+    )
+    ```
+  </Accordion>
+  
+  <Accordion title="Layout Stability" icon="lock">
+    Reserve space with invisible elements:
+    
+    ```tsx
+    <div style={{ visibility: "hidden" }}>{longestContent}</div>
+    <div style={{ position: "absolute" }}>{visibleContent}</div>
+    ```
+  </Accordion>
+  
+  <Accordion title="Crossfade Transitions" icon="layer-group">
+    Overlap opacity transitions for smooth blends:
+    
+    ```tsx
+    // Layer 1: fade out from frame 52-60
+    // Layer 2: fade in from frame 56-64
+    // 4-frame overlap creates smooth crossfade
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Common Mistakes to Avoid
+
+<Warning>
+  **Don't use per-character opacity for typewriter effects** - The cursor position will be wrong because invisible characters still take up space.
+</Warning>
+
+<Warning>
+  **Don't use binary (0 or 1) opacity for cursor blink** - Use smooth interpolation instead for a professional look.
+</Warning>
+
+<Warning>
+  **Don't let word carousels jump around** - Use the longest word to establish stable container dimensions.
+</Warning>
+
+<Warning>
+  **Don't switch highlights abruptly** - Use two-layer crossfade technique for smooth transitions.
+</Warning>
+
+## Typography Best Practices
+
+<Steps>
+  <Step title="Choose Readable Fonts">
+    Use web-safe fonts or import from Google Fonts. Ensure sufficient weight and size for video compression.
+  </Step>
+  
+  <Step title="Plan Timing Carefully">
+    Typewriter speed: ~3-5 characters per second (at 30fps = ~6-10 frames per char)
+    
+    Cursor blink cycle: ~16 frames for natural rhythm
+  </Step>
+  
+  <Step title="Test Readability">
+    Preview at actual output resolution. Text that looks good in the editor may be too small when rendered.
+  </Step>
+</Steps>
+
+## Related Skills
+
+<CardGroup cols={2}>
+  <Card title="Spring Physics" icon="atom" href="/skills/spring-physics">
+    Add bounce to text entrances
+  </Card>
+  <Card title="Sequencing" icon="list-timeline" href="/skills/sequencing">
+    Coordinate multiple text elements
+  </Card>
+</CardGroup>

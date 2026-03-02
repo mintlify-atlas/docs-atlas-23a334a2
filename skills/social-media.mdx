@@ -1,0 +1,343 @@
+---
+title: Social Media Content
+description: Optimize animations for mobile viewing, platform UI constraints, and engagement on Instagram, TikTok, and other social platforms
+---
+
+<Note>
+  **Impact:** MEDIUM - Optimizes content for mobile viewing and engagement
+</Note>
+
+This skill provides patterns for creating content optimized for social media platforms, with focus on mobile viewing, safe zones, and engagement tactics.
+
+## Safe Zone for UI Overlays
+
+Keep key content in the center 80% to avoid platform UI elements.
+
+<CodeGroup>
+```tsx Incorrect (content at edges - gets covered by UI)
+<AbsoluteFill style={{ padding: 10 }}>
+  <div style={{ position: "absolute", top: 0 }}>Title</div>
+  <div style={{ position: "absolute", bottom: 0 }}>CTA</div>
+</AbsoluteFill>
+```
+
+```tsx Correct (content in safe zone)
+const SAFE_MARGIN_TOP = height * 0.12;
+const SAFE_MARGIN_BOTTOM = height * 0.15;
+const SAFE_MARGIN_SIDES = width * 0.05;
+
+<AbsoluteFill
+  style={{
+    paddingTop: SAFE_MARGIN_TOP,
+    paddingBottom: SAFE_MARGIN_BOTTOM,
+    paddingLeft: SAFE_MARGIN_SIDES,
+    paddingRight: SAFE_MARGIN_SIDES,
+  }}
+>
+  {content}
+</AbsoluteFill>;
+```
+</CodeGroup>
+
+<Warning>
+  Instagram, TikTok, and YouTube Shorts overlay UI elements (profile pic, buttons, captions) that can cover up to 20% of the screen. Always use safe zones.
+</Warning>
+
+## Platform-Specific Safe Zones
+
+<Tabs>
+  <Tab title="Instagram Stories/Reels">
+    **Top margin:** 12% (profile pic, camera icon)
+    
+    **Bottom margin:** 15% (like, comment, share buttons)
+    
+    **Side margins:** 5%
+    
+    ```tsx
+    const SAFE_TOP = height * 0.12;
+    const SAFE_BOTTOM = height * 0.15;
+    const SAFE_SIDES = width * 0.05;
+    ```
+  </Tab>
+  
+  <Tab title="TikTok">
+    **Top margin:** 10% (username, follow button)
+    
+    **Bottom margin:** 20% (description, buttons)
+    
+    **Right margin:** 8% (button stack)
+    
+    ```tsx
+    const SAFE_TOP = height * 0.10;
+    const SAFE_BOTTOM = height * 0.20;
+    const SAFE_RIGHT = width * 0.08;
+    ```
+  </Tab>
+  
+  <Tab title="YouTube Shorts">
+    **Top margin:** 8%
+    
+    **Bottom margin:** 18% (like, dislike, subscribe buttons)
+    
+    **Side margins:** 5%
+    
+    ```tsx
+    const SAFE_TOP = height * 0.08;
+    const SAFE_BOTTOM = height * 0.18;
+    const SAFE_SIDES = width * 0.05;
+    ```
+  </Tab>
+</Tabs>
+
+## Mobile-First Text Sizing
+
+Text must be readable on small screens. Minimum 48px for headlines.
+
+<CodeGroup>
+```tsx Incorrect (text too small for mobile)
+const TITLE_SIZE = 24;
+const BODY_SIZE = 14;
+```
+
+```tsx Correct (mobile-readable sizes)
+const TITLE_SIZE = Math.max(48, Math.round(width * 0.08));
+const BODY_SIZE = Math.max(28, Math.round(width * 0.045));
+```
+</CodeGroup>
+
+<Tip>
+  Using percentage-based sizing ensures text scales appropriately across different resolutions, while the `Math.max()` enforces minimum readable sizes.
+</Tip>
+
+## Text Size Guidelines
+
+<AccordionGroup>
+  <Accordion title="Headlines" icon="heading">
+    **Minimum:** 48px
+    
+    **Recommended:** 8% of video width
+    
+    ```tsx
+    const headlineSize = Math.max(48, width * 0.08);
+    ```
+  </Accordion>
+  
+  <Accordion title="Body Text" icon="text">
+    **Minimum:** 28px
+    
+    **Recommended:** 4.5% of video width
+    
+    ```tsx
+    const bodySize = Math.max(28, width * 0.045);
+    ```
+  </Accordion>
+  
+  <Accordion title="Captions/Labels" icon="closed-captioning">
+    **Minimum:** 24px
+    
+    **Recommended:** 3.5% of video width
+    
+    ```tsx
+    const captionSize = Math.max(24, width * 0.035);
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Hook in First Frames
+
+Social content needs immediate visual interest. Add movement from frame 0.
+
+<CodeGroup>
+```tsx Incorrect (static start)
+const entrance = spring({ frame: frame - 30, fps }); // Starts after 1 second
+```
+
+```tsx Correct (immediate hook)
+const entrance = spring({
+  frame,
+  fps,
+  config: { damping: 12, stiffness: 200 },
+});
+const pulse = Math.sin(frame * 0.15) * 0.03 + 1; // Subtle constant motion
+
+<div style={{ transform: `scale(${entrance * pulse})` }}>{content}</div>;
+```
+</CodeGroup>
+
+<Note>
+  The first 0.5 seconds determine whether viewers keep watching. Always have visible motion or visual interest from frame 0.
+</Note>
+
+## High Contrast Colors
+
+Use bold, saturated colors that pop on mobile screens.
+
+```tsx
+// Good for social
+const COLOR_PRIMARY = "#FF3366";
+const COLOR_ACCENT = "#00D4FF";
+const COLOR_BG = "#0A0A0A";
+
+// Avoid muted/pastel colors that look washed out
+// const COLOR_PRIMARY = "#C4A4A4"; // Too muted
+```
+
+<AccordionGroup>
+  <Accordion title="Why high contrast?" icon="circle-half-stroke">
+    Mobile screens vary widely in quality, brightness, and settings. High contrast ensures your content is visible in all conditions:
+    - Bright sunlight
+    - Low brightness settings
+    - Older/cheaper screens
+    - Compressed video delivery
+  </Accordion>
+  
+  <Accordion title="Color Palette Recommendations" icon="palette">
+    **Vibrant primaries:**
+    - Red: `#FF3366`, `#FF0055`
+    - Blue: `#00D4FF`, `#0099FF`
+    - Green: `#00FF88`, `#22FF66`
+    - Purple: `#CC00FF`, `#9933FF`
+    
+    **Dark backgrounds:**
+    - `#0A0A0A` (near black)
+    - `#1A1A2E` (dark blue-gray)
+    
+    **Light backgrounds:**
+    - `#FFFFFF` (white)
+    - `#F0F0F0` (light gray)
+  </Accordion>
+</AccordionGroup>
+
+## Loop-Friendly Endings
+
+Design animations that can seamlessly loop.
+
+```tsx
+const TOTAL_DURATION = durationInFrames;
+const loopProgress = (frame % TOTAL_DURATION) / TOTAL_DURATION;
+
+// Or fade to start state at the end
+const fadeOut = interpolate(
+  frame,
+  [TOTAL_DURATION - 15, TOTAL_DURATION],
+  [1, 0],
+);
+```
+
+<Tip>
+  Looping content gets more replay value on platforms like Instagram Reels and TikTok, where videos auto-replay.
+</Tip>
+
+## Aspect Ratios by Platform
+
+<CardGroup cols={2}>
+  <Card title="Instagram Reels" icon="instagram">
+    **Ratio:** 9:16 (vertical)
+    
+    **Resolution:** 1080x1920
+    
+    ```tsx
+    width: 1080,
+    height: 1920
+    ```
+  </Card>
+  
+  <Card title="TikTok" icon="tiktok">
+    **Ratio:** 9:16 (vertical)
+    
+    **Resolution:** 1080x1920
+    
+    ```tsx
+    width: 1080,
+    height: 1920
+    ```
+  </Card>
+  
+  <Card title="Instagram Stories" icon="instagram">
+    **Ratio:** 9:16 (vertical)
+    
+    **Resolution:** 1080x1920
+    
+    ```tsx
+    width: 1080,
+    height: 1920
+    ```
+  </Card>
+  
+  <Card title="YouTube Shorts" icon="youtube">
+    **Ratio:** 9:16 (vertical)
+    
+    **Resolution:** 1080x1920
+    
+    ```tsx
+    width: 1080,
+    height: 1920
+    ```
+  </Card>
+</CardGroup>
+
+## Common Mistakes to Avoid
+
+<Warning>
+  **Don't place important content at edges** - It will be covered by platform UI. Use safe zones.
+</Warning>
+
+<Warning>
+  **Don't use small text** - Minimum 48px for headlines, 28px for body text.
+</Warning>
+
+<Warning>
+  **Don't have static openings** - Hook viewers immediately with motion from frame 0.
+</Warning>
+
+<Warning>
+  **Don't use muted colors** - Mobile screens need high contrast and saturation to stand out.
+</Warning>
+
+## Engagement Optimization
+
+<Steps>
+  <Step title="Immediate Hook">
+    First 0.5 seconds must have:
+    - Motion
+    - Bold text
+    - Bright colors
+    - Clear value proposition
+  </Step>
+  
+  <Step title="Constant Motion">
+    Never let the video feel static:
+    - Subtle background animations
+    - Floating elements
+    - Pulsing effects
+    - Particle systems
+  </Step>
+  
+  <Step title="Text Overlays">
+    Use large, readable text throughout:
+    - Captions for accessibility
+    - Key points emphasized
+    - Call-to-action visible
+  </Step>
+  
+  <Step title="Loop Design">
+    Make the ending flow back to the beginning:
+    - Fade out to match fade in
+    - Circular animations
+    - Return to starting position
+  </Step>
+</Steps>
+
+## Related Skills
+
+<CardGroup cols={3}>
+  <Card title="Typography" icon="font" href="/skills/typography">
+    Optimize text for mobile
+  </Card>
+  <Card title="Spring Physics" icon="atom" href="/skills/spring-physics">
+    Create engaging motion
+  </Card>
+  <Card title="Transitions" icon="right-left" href="/skills/transitions">
+    Smooth scene changes
+  </Card>
+</CardGroup>

@@ -1,0 +1,190 @@
+---
+title: "Response Format"
+description: "Response schema and structure for the /api/generate endpoint"
+---
+
+The `/api/generate` endpoint returns different response formats depending on the mode:
+
+- **Initial Generation**: Streaming SSE response
+- **Follow-up Edits**: JSON response
+
+## Follow-up Edit Response
+
+When `isFollowUp` is `true`, the endpoint returns a JSON response.
+
+### TypeScript Interface
+
+```typescript
+interface GenerateResponse {
+  code: string;
+  summary: string;
+  metadata: {
+    skills: string[];
+    editType: "tool_edit" | "full_replacement";
+    edits?: EditOperation[];
+    model: string;
+  };
+}
+
+interface EditOperation {
+  description: string;
+  old_string: string;
+  new_string: string;
+  lineNumber?: number;
+}
+```
+
+### Response Fields
+
+<ResponseField name="code" type="string" required>
+  The complete generated or edited animation code.
+  
+  Always includes imports and exports. Ready to use in Remotion.
+</ResponseField>
+
+<ResponseField name="summary" type="string" required>
+  A brief 1-sentence summary of what changes were made.
+  
+  Examples:
+  - `"Changed background color to blue and increased font size"`
+  - `"Created a countdown timer with spring animations"`
+</ResponseField>
+
+<ResponseField name="metadata" type="object" required>
+  Metadata about the generation process and detected skills.
+  
+  <ResponseField name="metadata.skills" type="string[]" required>
+    Array of skill names that were detected and applied for this generation.
+    
+    Examples: `["chart", "3d"]`, `["text-animation"]`, `[]`
+  </ResponseField>
+  
+  <ResponseField name="metadata.editType" type="'tool_edit' | 'full_replacement'" required>
+    Indicates how the code was modified:
+    - `"tool_edit"`: Targeted edits were applied to existing code
+    - `"full_replacement"`: Complete code was regenerated
+  </ResponseField>
+  
+  <ResponseField name="metadata.edits" type="EditOperation[]">
+    Array of edit operations that were applied. Only present when `editType` is `"tool_edit"`.
+    
+    Each edit operation contains:
+    - `description`: Brief description of the edit (e.g., "Update background color")
+    - `old_string`: The exact string that was replaced
+    - `new_string`: The replacement string
+    - `lineNumber`: Line number where the edit was applied (optional)
+  </ResponseField>
+  
+  <ResponseField name="metadata.model" type="string" required>
+    The model name that was used for generation (e.g., `"gpt-5.2"`).
+  </ResponseField>
+</ResponseField>
+
+## Initial Generation Response
+
+For initial generation (when `isFollowUp` is `false`), the endpoint returns a streaming response. See [Streaming](/api/streaming) for details.
+
+## Example Responses
+
+### Successful Edit with Targeted Changes
+
+```json
+{
+  "code": "import { useCurrentFrame, useVideoConfig, AbsoluteFill } from \"remotion\";\n\nexport const MyAnimation = () => {\n  const frame = useCurrentFrame();\n  const { width, height } = useVideoConfig();\n  \n  const BACKGROUND_COLOR = \"#1e3a8a\";\n  \n  return (\n    <AbsoluteFill style={{ backgroundColor: BACKGROUND_COLOR }}>\n      <h1>Hello World</h1>\n    </AbsoluteFill>\n  );\n};",
+  "summary": "Changed background color to dark blue (#1e3a8a)",
+  "metadata": {
+    "skills": [],
+    "editType": "tool_edit",
+    "edits": [
+      {
+        "description": "Update background color constant",
+        "old_string": "const BACKGROUND_COLOR = \"#ffffff\";",
+        "new_string": "const BACKGROUND_COLOR = \"#1e3a8a\";",
+        "lineNumber": 6
+      }
+    ],
+    "model": "gpt-5.2"
+  }
+}
+```
+
+### Full Replacement Response
+
+```json
+{
+  "code": "import { useCurrentFrame, useVideoConfig, AbsoluteFill, interpolate } from \"remotion\";\n\nexport const CountdownTimer = () => {\n  const frame = useCurrentFrame();\n  const { fps, durationInFrames } = useVideoConfig();\n  \n  const DURATION = 10;\n  const countdown = Math.max(0, DURATION - Math.floor(frame / fps));\n  \n  return (\n    <AbsoluteFill style={{ backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>\n      <h1 style={{ fontSize: 200, color: 'white', fontFamily: 'Inter, sans-serif' }}>\n        {countdown}\n      </h1>\n    </AbsoluteFill>\n  );\n};",
+  "summary": "Completely restructured as a countdown timer from 10 to 0",
+  "metadata": {
+    "skills": ["text-animation"],
+    "editType": "full_replacement",
+    "model": "gpt-5.2"
+  }
+}
+```
+
+## Error Responses
+
+### Missing API Key
+
+```json
+{
+  "error": "The environment variable \"OPENAI_API_KEY\" is not set. Add it to your .env file and try again."
+}
+```
+
+HTTP Status: `400`
+
+### Validation Error
+
+```json
+{
+  "error": "No valid motion graphics prompt. Please describe an animation or visual content you'd like to create.",
+  "type": "validation"
+}
+```
+
+HTTP Status: `400`
+
+### Edit Failed
+
+```json
+{
+  "error": "Edit 2 failed: Could not find the specified text",
+  "type": "edit_failed",
+  "failedEdit": {
+    "description": "Update animation duration",
+    "old_string": "const DURATION = 30;",
+    "new_string": "const DURATION = 60;"
+  }
+}
+```
+
+HTTP Status: `400`
+
+### Ambiguous Edit
+
+```json
+{
+  "error": "Edit 1 failed: Found 3 matches. The edit target is ambiguous.",
+  "type": "edit_failed",
+  "failedEdit": {
+    "description": "Update color",
+    "old_string": "color: 'blue'",
+    "new_string": "color: 'red'"
+  }
+}
+```
+
+HTTP Status: `400`
+
+When an edit fails due to ambiguity, the client should retry with error correction context to help the AI provide more specific targeting.
+
+### Generic Server Error
+
+```json
+{
+  "error": "Something went wrong while trying to reach OpenAI APIs."
+}
+```
+
+HTTP Status: `500`

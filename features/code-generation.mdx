@@ -1,0 +1,433 @@
+---
+title: Code generation
+description: Learn how the system generates React/Remotion animation code using one-shot prompts and constants-first design.
+---
+
+The code generation system transforms natural language prompts into working React/Remotion animation components using a one-shot generation approach with structured system prompts and optional skill-specific guidance.
+
+## Generation modes
+
+The system supports two distinct generation modes:
+
+<CardGroup cols={2}>
+  <Card title="Initial generation" icon="sparkles">
+    Creates a complete animation from scratch using streaming text generation. Returns full component code.
+  </Card>
+  <Card title="Follow-up edits" icon="pencil">
+    Makes targeted changes to existing code using structured edits or full replacement. Uses non-streaming generation for speed.
+  </Card>
+</CardGroup>
+
+## System prompt architecture
+
+The base system prompt defines the component structure, coding rules, and available APIs. It's the foundation that ensures consistent, high-quality output.
+
+### Component structure
+
+```typescript
+const SYSTEM_PROMPT = `
+You are an expert in generating React components for Remotion animations.
+
+## COMPONENT STRUCTURE
+
+1. Start with ES6 imports
+2. Export as: export const MyAnimation = () => { ... };
+3. Component body order:
+   - Multi-line comment description (2-3 sentences)
+   - Hooks (useCurrentFrame, useVideoConfig, etc.)
+   - Constants (COLORS, TEXT, TIMING, LAYOUT) - all UPPER_SNAKE_CASE
+   - Calculations and derived values
+   - return JSX
+
+## CONSTANTS RULES (CRITICAL)
+
+ALL constants MUST be defined INSIDE the component body, AFTER hooks:
+- Colors: const COLOR_TEXT = "#000000";
+- Text: const TITLE_TEXT = "Hello World";
+- Timing: const FADE_DURATION = 20;
+- Layout: const PADDING = 40;
+
+This allows users to easily customize the animation.
+```
+
+From `src/app/api/generate/route.ts:39-62`
+
+<Note>
+  The constants-first design is critical for user customization. By defining all magic numbers and strings as named constants, users can quickly adjust colors, text, timing, and layout without hunting through JSX.
+</Note>
+
+### Animation rules
+
+```typescript
+## ANIMATION RULES
+
+- Prefer spring() for organic motion (entrances, bounces, scaling)
+- Use interpolate() for linear progress (progress bars, opacity fades)
+- Always use { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+- Add stagger delays for multiple elements
+```
+
+From `src/app/api/generate/route.ts:69-75`
+
+### Layout rules
+
+```typescript
+## LAYOUT RULES
+
+- Use full width of container with appropriate padding
+- Never constrain content to a small centered box
+- Use Math.max(minValue, Math.round(width * percentage)) for responsive sizing
+```
+
+From `src/app/api/generate/route.ts:64-67`
+
+### Available imports
+
+The system prompt lists all whitelisted libraries:
+
+```tsx
+## AVAILABLE IMPORTS
+
+```tsx
+import { useCurrentFrame, useVideoConfig, AbsoluteFill, interpolate, spring, Sequence } from "remotion";
+import { TransitionSeries, linearTiming, springTiming } from "@remotion/transitions";
+import { fade } from "@remotion/transitions/fade";
+import { slide } from "@remotion/transitions/slide";
+import { Circle, Rect, Triangle, Star, Ellipse, Pie } from "@remotion/shapes";
+import { ThreeCanvas } from "@remotion/three";
+import { useState, useEffect } from "react";
+```
+```
+
+From `src/app/api/generate/route.ts:78-86`
+
+### Reserved names
+
+To prevent variable shadowing bugs, the system warns about reserved names:
+
+```typescript
+## RESERVED NAMES (CRITICAL)
+
+NEVER use these as variable names - they shadow imports:
+- spring, interpolate, useCurrentFrame, useVideoConfig, AbsoluteFill, Sequence
+```
+
+From `src/app/api/generate/route.ts:88-91`
+
+### Output format
+
+```typescript
+## OUTPUT FORMAT (CRITICAL)
+
+- Output ONLY code - no explanations, no questions
+- Response must start with "import" and end with "};"
+- If prompt is ambiguous, make a reasonable choice - do not ask for clarification
+```
+
+From `src/app/api/generate/route.ts:100-105`
+
+This strict output format enables streaming text to be directly inserted into the code editor without parsing.
+
+## Initial generation flow
+
+When generating a new animation from scratch:
+
+```typescript
+// INITIAL GENERATION: Use streaming for new animations
+try {
+  // Build messages for initial generation (supports image references)
+  const hasImages = frameImages && frameImages.length > 0;
+  const initialPromptText = hasImages
+    ? `${prompt}\n\n(See the attached ${frameImages.length === 1 ? "image" : "images"} for visual reference)`
+    : prompt;
+
+  const initialMessageContent: Array<
+    { type: "text"; text: string } | { type: "image"; image: string }
+  > = [{ type: "text" as const, text: initialPromptText }];
+  if (hasImages) {
+    for (const img of frameImages) {
+      initialMessageContent.push({ type: "image" as const, image: img });
+    }
+  }
+
+  const result = streamText({
+    model: openai(modelName),
+    system: enhancedSystemPrompt,
+    messages: initialMessages,
+    ...(reasoningEffort && {
+      providerOptions: {
+        openai: {
+          reasoningEffort: reasoningEffort,
+        },
+      },
+    }),
+  });
+
+  // Return streaming response with metadata prepended
+  const originalResponse = result.toUIMessageStreamResponse({
+    sendReasoning: true,
+  });
+  // ... metadata injection
+}
+```
+
+From `src/app/api/generate/route.ts:586-643`
+
+<Info>
+  Initial generation uses **streaming** to provide real-time feedback. Users see code appear token-by-token in the editor.
+</Info>
+
+## Follow-up edit flow
+
+Follow-up edits use a different system prompt optimized for targeted changes:
+
+```typescript
+const FOLLOW_UP_SYSTEM_PROMPT = `
+You are an expert at making targeted edits to React/Remotion animation components.
+
+Given the current code and a user request, decide whether to:
+1. Use targeted edits (for small, specific changes)
+2. Provide full replacement code (for major restructuring)
+
+## WHEN TO USE TARGETED EDITS (type: "edit")
+- Changing colors, text, numbers, timing values
+- Adding or removing a single element
+- Modifying styles or properties
+- Small additions (new variable, new element)
+- Changes affecting <30% of the code
+
+## WHEN TO USE FULL REPLACEMENT (type: "full")
+- Completely different animation style
+- Major structural reorganization
+- User asks to "start fresh" or "rewrite"
+- Changes affect >50% of the code
+
+## EDIT FORMAT
+For targeted edits, each edit needs:
+- old_string: The EXACT string to find (including whitespace/indentation)
+- new_string: The replacement string
+
+CRITICAL:
+- old_string must match the code EXACTLY character-for-character
+- Include enough surrounding context to make old_string unique
+- If multiple similar lines exist, include more surrounding code
+- Preserve indentation exactly as it appears in the original
+```
+
+From `src/app/api/generate/route.ts:108-138`
+
+### Edit application
+
+Targeted edits are applied using exact string matching with validation:
+
+```typescript
+function applyEdits(
+  code: string,
+  edits: EditOperation[],
+): {
+  success: boolean;
+  result: string;
+  error?: string;
+  enrichedEdits?: EditOperation[];
+  failedEdit?: EditOperation;
+} {
+  let result = code;
+  const enrichedEdits: EditOperation[] = [];
+
+  for (let i = 0; i < edits.length; i++) {
+    const edit = edits[i];
+    const { old_string, new_string, description } = edit;
+
+    // Check if the old_string exists
+    if (!result.includes(old_string)) {
+      return {
+        success: false,
+        result: code,
+        error: `Edit ${i + 1} failed: Could not find the specified text`,
+        failedEdit: edit,
+      };
+    }
+
+    // Check for multiple matches (ambiguous)
+    const matches = result.split(old_string).length - 1;
+    if (matches > 1) {
+      return {
+        success: false,
+        result: code,
+        error: `Edit ${i + 1} failed: Found ${matches} matches. The edit target is ambiguous.`,
+        failedEdit: edit,
+      };
+    }
+
+    // Get line number before applying edit
+    const lineNumber = getLineNumber(result, old_string);
+
+    // Apply the edit
+    result = result.replace(old_string, new_string);
+
+    // Store enriched edit with line number
+    enrichedEdits.push({
+      description,
+      old_string,
+      new_string,
+      lineNumber,
+    });
+  }
+
+  return { success: true, result, enrichedEdits };
+}
+```
+
+From `src/app/api/generate/route.ts:197-251`
+
+<Warning>
+  Edit operations require **exact character-for-character matching**. If the old string isn't found or matches multiple locations, the edit fails and triggers error correction.
+</Warning>
+
+## Constants-first design
+
+The system enforces a constants-first approach where all customizable values are extracted as named constants:
+
+### Example output structure
+
+```tsx
+export const MyAnimation = () => {
+  /*
+   * Animated progress bar that fills from 0 to 100%
+   * with a smooth spring animation and percentage label.
+   */
+
+  // Hooks
+  const frame = useCurrentFrame();
+  const { width, height, fps } = useVideoConfig();
+
+  // Constants - Colors
+  const COLOR_BACKGROUND = "#1a1a1a";
+  const COLOR_PROGRESS = "#3b82f6";
+  const COLOR_TEXT = "#ffffff";
+
+  // Constants - Timing
+  const ANIMATION_DURATION = 90;
+
+  // Constants - Layout
+  const BAR_HEIGHT = 40;
+  const BAR_WIDTH = Math.max(400, Math.round(width * 0.6));
+  const PADDING = 40;
+
+  // Calculations
+  const progress = spring({
+    frame,
+    fps,
+    config: { damping: 20 },
+    durationInFrames: ANIMATION_DURATION,
+  });
+
+  const percentage = Math.round(progress * 100);
+
+  return (
+    <AbsoluteFill
+      style={{
+        backgroundColor: COLOR_BACKGROUND,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      {/* Bar container */}
+      <div
+        style={{
+          width: BAR_WIDTH,
+          height: BAR_HEIGHT,
+          backgroundColor: "rgba(255, 255, 255, 0.1)",
+          borderRadius: 8,
+          overflow: "hidden",
+        }}
+      >
+        {/* Progress fill */}
+        <div
+          style={{
+            width: `${percentage}%`,
+            height: "100%",
+            backgroundColor: COLOR_PROGRESS,
+          }}
+        />
+      </div>
+
+      {/* Percentage label */}
+      <div
+        style={{
+          marginTop: 20,
+          fontSize: 32,
+          fontFamily: "Inter, sans-serif",
+          color: COLOR_TEXT,
+        }}
+      >
+        {percentage}%
+      </div>
+    </AbsoluteFill>
+  );
+};
+```
+
+This structure makes it trivial for users to customize:
+- **Colors**: All color constants grouped together
+- **Timing**: Animation durations and delays as named values
+- **Layout**: Sizes, padding, and positioning values
+- **Text**: Copy that might need localization
+
+## Skill enhancement
+
+When skills are detected, their content is appended to the system prompt:
+
+```typescript
+const skillContent = getCombinedSkillContent(newSkills as SkillName[]);
+const enhancedSystemPrompt = skillContent
+  ? `${SYSTEM_PROMPT}\n\n## SKILL-SPECIFIC GUIDANCE\n${skillContent}`
+  : SYSTEM_PROMPT;
+```
+
+From `src/app/api/generate/route.ts:388-392`
+
+This allows the model to access specialized knowledge for charts, typography, 3D, etc. without bloating the base prompt.
+
+## Error correction
+
+If generated code has compilation errors or edit operations fail, the system automatically retries with error context:
+
+```typescript
+let errorCorrectionNotice = "";
+if (errorCorrection) {
+  const isEditFailure =
+    errorCorrection.error.includes("Edit") &&
+    errorCorrection.error.includes("failed");
+
+  if (isEditFailure) {
+    errorCorrectionNotice = `
+## EDIT FAILED (ATTEMPT ${errorCorrection.attemptNumber}/${errorCorrection.maxAttempts})
+${errorCorrection.error}
+
+CRITICAL: Your previous edit target was ambiguous or not found. To fix this:
+1. Include MORE surrounding code context in old_string to make it unique
+2. Make sure old_string matches the code EXACTLY (including whitespace)
+3. If the code structure changed, look at the current code carefully`;
+  } else {
+    errorCorrectionNotice = `
+## COMPILATION ERROR (ATTEMPT ${errorCorrection.attemptNumber}/${errorCorrection.maxAttempts})
+The previous code failed to compile with this error:
+${errorCorrection.error}
+
+CRITICAL: Fix this compilation error. Common issues include:
+- Syntax errors (missing brackets, semicolons)
+- Invalid JSX (unclosed tags, invalid attributes)
+- Undefined variables or imports
+- TypeScript type errors
+
+Focus ONLY on fixing the error. Do not make other changes.`;
+  }
+}
+```
+
+From `src/app/api/generate/route.ts:418-462`
+
+<Tip>
+  The system provides specific guidance based on the error type (edit failure vs compilation error) to help the model self-correct.
+</Tip>

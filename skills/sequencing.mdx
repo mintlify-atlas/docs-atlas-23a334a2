@@ -1,0 +1,302 @@
+---
+title: Timing & Sequencing
+description: Control when elements appear and enable complex choreography with Sequence and Series components
+---
+
+<Note>
+  **Impact:** HIGH - Controls when elements appear and enables complex choreography
+</Note>
+
+This skill covers Remotion's timing components (`Sequence` and `Series`) and patterns for staggered animations and complex choreography.
+
+## Sequence for Delayed Elements
+
+Use `Sequence` to delay when an element appears in the timeline.
+
+<CodeGroup>
+```tsx Incorrect (manual frame checks)
+{
+  frame >= 30 && <Title />;
+}
+{
+  frame >= 60 && <Subtitle />;
+}
+```
+
+```tsx Correct (Sequence component)
+import { Sequence } from "remotion";
+
+<Sequence from={30} durationInFrames={90}>
+  <Title />
+</Sequence>
+<Sequence from={60} durationInFrames={60}>
+  <Subtitle />
+</Sequence>
+```
+</CodeGroup>
+
+<Tip>
+  Using `Sequence` is cleaner than manual frame checks and allows child components to use `useCurrentFrame()` with a local frame counter (starting from 0).
+</Tip>
+
+## Series for Sequential Playback
+
+Use `Series` when elements should play one after another without overlap.
+
+```tsx
+import { Series } from "remotion";
+
+<Series>
+  <Series.Sequence durationInFrames={45}>
+    <Intro />
+  </Series.Sequence>
+  <Series.Sequence durationInFrames={60}>
+    <MainContent />
+  </Series.Sequence>
+  <Series.Sequence durationInFrames={30}>
+    <Outro />
+  </Series.Sequence>
+</Series>;
+```
+
+<Accordion title="When to use Series vs Sequence?">
+  - **Sequence:** Use when you know exact frame numbers where elements should appear
+  - **Series:** Use when you want elements to play sequentially without manually calculating frame offsets
+  
+  Series automatically calculates the start time of each sequence based on previous durations.
+</Accordion>
+
+## Series with Offset for Overlap
+
+Use negative offset for overlapping sequences:
+
+```tsx
+<Series>
+  <Series.Sequence durationInFrames={60}>
+    <SceneA />
+  </Series.Sequence>
+  <Series.Sequence offset={-15} durationInFrames={60}>
+    {/* Starts 15 frames before SceneA ends */}
+    <SceneB />
+  </Series.Sequence>
+</Series>
+```
+
+<Note>
+  Negative offsets create overlaps, useful for crossfade effects or maintaining visual continuity between scenes.
+</Note>
+
+## Staggered Element Entrances
+
+For staggered animations of multiple items, calculate delays:
+
+<CodeGroup>
+```tsx Incorrect (hardcoded delays)
+const items = data.map((item, i) => {
+  const delay = i === 0 ? 0 : i === 1 ? 10 : i === 2 ? 20 : 30;
+  // ...
+});
+```
+
+```tsx Correct (calculated stagger)
+const STAGGER_DELAY = 8;
+const BASE_DELAY = 15;
+
+const items = data.map((item, i) => {
+  const delay = BASE_DELAY + i * STAGGER_DELAY;
+  const progress = spring({
+    frame: frame - delay,
+    fps,
+    config: { damping: 15, stiffness: 120 },
+  });
+  return (
+    <Item
+      key={i}
+      style={{
+        opacity: progress,
+        transform: `translateY(${(1 - progress) * 20}px)`,
+      }}
+    />
+  );
+});
+```
+</CodeGroup>
+
+<Tip>
+  Using calculated delays makes the code scalable - adding more items automatically adjusts the timing.
+</Tip>
+
+## Nested Sequences
+
+Sequences can be nested for complex timing:
+
+```tsx
+<Sequence from={0} durationInFrames={120}>
+  <Background />
+  <Sequence from={15} durationInFrames={90}>
+    <Title />
+  </Sequence>
+  <Sequence from={45} durationInFrames={60}>
+    <Subtitle />
+  </Sequence>
+</Sequence>
+```
+
+<Accordion title="How do nested Sequences work?">
+  The inner `Sequence` frames are **relative to the parent**. In this example:
+  - Title appears at global frame 15 (0 + 15)
+  - Subtitle appears at global frame 45 (0 + 45)
+  
+  This allows you to move the entire group by changing only the outer `from` value.
+</Accordion>
+
+## Frame References Inside Sequences
+
+Inside a Sequence, `useCurrentFrame()` returns the local frame (starting from 0):
+
+```tsx
+<Sequence from={60} durationInFrames={30}>
+  <MyComponent />
+  {/* Inside MyComponent, useCurrentFrame() returns 0-29, not 60-89 */}
+</Sequence>
+```
+
+<Warning>
+  Be aware that `useCurrentFrame()` is **zero-based within each Sequence**. If you need the global frame, use `useVideoConfig()` or pass the frame as a prop.
+</Warning>
+
+## Key Patterns
+
+<AccordionGroup>
+  <Accordion title="Calculated Stagger Delays" icon="calculator">
+    Always use a formula for stagger delays:
+    
+    ```tsx
+    const delay = BASE_DELAY + index * STAGGER_DELAY;
+    ```
+    
+    Makes code maintainable and scalable.
+  </Accordion>
+  
+  <Accordion title="Base Delay + Stagger" icon="clock">
+    Separate initial delay from stagger interval:
+    
+    ```tsx
+    const BASE_DELAY = 15;  // All items wait this long
+    const STAGGER_DELAY = 8; // Additional delay per item
+    ```
+    
+    Provides fine-grained control over timing.
+  </Accordion>
+  
+  <Accordion title="Spring with Delayed Start" icon="atom">
+    Offset the frame passed to spring:
+    
+    ```tsx
+    spring({ frame: frame - delay, fps })
+    ```
+    
+    Spring automatically handles negative frames (returns 0).
+  </Accordion>
+  
+  <Accordion title="Series for Auto-Sequencing" icon="list-timeline">
+    When exact timing doesn't matter:
+    
+    ```tsx
+    <Series>
+      {scenes.map(scene => (
+        <Series.Sequence durationInFrames={scene.duration}>
+          {scene.component}
+        </Series.Sequence>
+      ))}
+    </Series>
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Timing Guidelines
+
+<Steps>
+  <Step title="Choose Stagger Interval">
+    - **Fast (3-5 frames):** Energetic, rapid reveals
+    - **Medium (8-12 frames):** Balanced, professional
+    - **Slow (15-20 frames):** Dramatic, deliberate
+  </Step>
+  
+  <Step title="Set Base Delay">
+    Give the scene time to establish before elements appear:
+    
+    ```tsx
+    const BASE_DELAY = 15; // ~0.5 seconds at 30fps
+    ```
+  </Step>
+  
+  <Step title="Calculate Total Duration">
+    ```tsx
+    const totalDuration = BASE_DELAY + 
+                          (itemCount * STAGGER_DELAY) + 
+                          ANIMATION_DURATION;
+    ```
+  </Step>
+</Steps>
+
+## Common Mistakes to Avoid
+
+<Warning>
+  **Don't use manual frame checks** - Use `Sequence` component instead of `{frame >= X && <Component />}`
+</Warning>
+
+<Warning>
+  **Don't hardcode stagger delays** - Use calculated delays: `delay = i * STAGGER_DELAY`
+</Warning>
+
+<Warning>
+  **Don't forget durationInFrames** - Every Sequence needs a duration, or it will only show for 1 frame.
+</Warning>
+
+<Warning>
+  **Don't assume global frames inside Sequences** - `useCurrentFrame()` is local to the Sequence, starting from 0.
+</Warning>
+
+## Advanced: Dynamic Sequence Generation
+
+```tsx
+const scenes = [
+  { component: <Intro />, duration: 60 },
+  { component: <MainContent />, duration: 120 },
+  { component: <Outro />, duration: 45 },
+];
+
+let currentFrame = 0;
+
+<>
+  {scenes.map((scene, i) => {
+    const sequenceStart = currentFrame;
+    currentFrame += scene.duration;
+    
+    return (
+      <Sequence key={i} from={sequenceStart} durationInFrames={scene.duration}>
+        {scene.component}
+      </Sequence>
+    );
+  })}
+</>
+```
+
+<Tip>
+  This pattern is useful when scene durations are dynamic or loaded from data.
+</Tip>
+
+## Related Skills
+
+<CardGroup cols={3}>
+  <Card title="Spring Physics" icon="atom" href="/skills/spring-physics">
+    Animate staggered elements
+  </Card>
+  <Card title="Transitions" icon="right-left" href="/skills/transitions">
+    Transition between sequences
+  </Card>
+  <Card title="Charts" icon="chart-bar" href="/skills/charts">
+    Stagger bar chart entrances
+  </Card>
+</CardGroup>

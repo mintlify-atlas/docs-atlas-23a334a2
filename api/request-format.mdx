@@ -1,0 +1,189 @@
+---
+title: "Request Format"
+description: "Request body schema and parameters for the /api/generate endpoint"
+---
+
+The `/api/generate` endpoint accepts a JSON request body with the following parameters.
+
+## TypeScript Interface
+
+```typescript
+interface GenerateRequest {
+  prompt: string;
+  model?: string;
+  currentCode?: string;
+  conversationHistory?: ConversationContextMessage[];
+  isFollowUp?: boolean;
+  hasManualEdits?: boolean;
+  errorCorrection?: ErrorCorrectionContext;
+  previouslyUsedSkills?: string[];
+  frameImages?: string[];
+}
+```
+
+## Parameters
+
+<ParamField path="prompt" type="string" required>
+  The user's request describing the animation to create or changes to make.
+  
+  For initial generation, this should describe the desired animation (e.g., "Create a countdown timer from 10 to 0").
+  
+  For follow-up edits, this should describe the changes (e.g., "Change the background to blue").
+</ParamField>
+
+<ParamField path="model" type="string" default="gpt-5.2">
+  The OpenAI model to use for generation. Can include optional reasoning effort.
+  
+  Format: `model-name` or `model-name:reasoning_effort`
+  
+  Examples:
+  - `"gpt-5.2"`
+  - `"gpt-5.2:high"`
+  - `"o1-mini"`
+</ParamField>
+
+<ParamField path="currentCode" type="string">
+  The existing animation code to edit. Required when `isFollowUp` is `true`.
+  
+  Should be the complete React/Remotion component code including imports.
+</ParamField>
+
+<ParamField path="conversationHistory" type="ConversationContextMessage[]">
+  Array of previous messages in the conversation for context.
+  
+  ```typescript
+  interface ConversationContextMessage {
+    role: "user" | "assistant";
+    content: string;
+    attachedImages?: string[]; // Base64 data URLs
+  }
+  ```
+  
+  The API uses the last 6 messages for context in follow-up edits.
+</ParamField>
+
+<ParamField path="isFollowUp" type="boolean" default={false}>
+  Determines the operation mode:
+  - `false`: Initial generation mode (streaming)
+  - `true`: Follow-up edit mode (non-streaming)
+  
+  When `true`, `currentCode` must be provided.
+</ParamField>
+
+<ParamField path="hasManualEdits" type="boolean" default={false}>
+  Indicates whether the user has manually edited the code.
+  
+  When `true`, the AI will attempt to preserve user edits unless explicitly asked to change them.
+</ParamField>
+
+<ParamField path="errorCorrection" type="ErrorCorrectionContext">
+  Context for self-healing error correction loops.
+  
+  ```typescript
+  interface ErrorCorrectionContext {
+    error: string;              // The error message
+    attemptNumber: number;      // Current attempt (1-based)
+    maxAttempts: number;        // Maximum retry attempts
+    failedEdit?: {              // Details of failed edit
+      description: string;
+      old_string: string;
+      new_string: string;
+    };
+  }
+  ```
+  
+  Used when previous generation attempts failed due to compilation errors or edit failures.
+</ParamField>
+
+<ParamField path="previouslyUsedSkills" type="string[]">
+  Array of skill names already used in this conversation.
+  
+  Prevents redundant skill content from being added to context. Skills are automatically detected based on the prompt.
+  
+  Example: `["chart", "3d", "text-animation"]`
+</ParamField>
+
+<ParamField path="frameImages" type="string[]">
+  Array of base64-encoded image data URLs for visual context.
+  
+  Supports multimodal prompts where users can reference images.
+  
+  Format: `["data:image/png;base64,iVBORw0KGgo...", ...]`
+</ParamField>
+
+## Example Requests
+
+### Initial Generation
+
+```bash
+curl -X POST https://your-domain.com/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Create a countdown timer from 10 to 0 with spring animations",
+    "model": "gpt-5.2"
+  }'
+```
+
+### Follow-up Edit with Targeted Changes
+
+```bash
+curl -X POST https://your-domain.com/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Change the background color to dark blue",
+    "isFollowUp": true,
+    "currentCode": "import { useCurrentFrame, AbsoluteFill } from \"remotion\";\n\nexport const MyAnimation = () => {\n  return <AbsoluteFill style={{ backgroundColor: \"white\" }} />;\n};",
+    "model": "gpt-5.2"
+  }'
+```
+
+### With Visual Context
+
+```bash
+curl -X POST https://your-domain.com/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Recreate the layout shown in the image",
+    "frameImages": ["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgA..."]
+  }'
+```
+
+### With Conversation History
+
+```bash
+curl -X POST https://your-domain.com/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Make it faster",
+    "isFollowUp": true,
+    "currentCode": "...",
+    "conversationHistory": [
+      {
+        "role": "user",
+        "content": "Create a bouncing ball animation"
+      },
+      {
+        "role": "assistant",
+        "content": "Created a bouncing ball with spring physics"
+      }
+    ],
+    "previouslyUsedSkills": ["spring-physics"]
+  }'
+```
+
+## Validation
+
+For initial generation requests (when `isFollowUp` is `false`), the API validates that the prompt is appropriate for motion graphics generation. Invalid prompts will return a 400 error with type `"validation"`.
+
+Valid prompts include requests for:
+- Animated text, titles, or typography
+- Data visualizations (charts, graphs, progress bars)
+- UI animations (buttons, cards, transitions)
+- Logo animations or brand intros
+- Social media content
+- Any visual/animated content
+
+Invalid prompts include:
+- Questions or general chat
+- Requests for written content
+- Non-visual tasks

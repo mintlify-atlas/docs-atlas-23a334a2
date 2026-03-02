@@ -1,0 +1,217 @@
+---
+title: Prompting Best Practices
+description: Learn how to write effective prompts that generate high-quality motion graphics animations
+---
+
+The AI-powered code generator works best when you provide clear, specific prompts. This guide covers best practices for writing prompts that produce exactly the animation you want.
+
+## Be Specific About Visual Details
+
+The more specific you are about colors, timing, and layout, the better your results will be.
+
+<CodeGroup>
+```text Good Prompt
+Create a chat interface with green sent bubbles on the right, gray received bubbles on the left, with a bouncy spring entrance
+```
+
+```text Bad Prompt
+Make a chat animation
+```
+</CodeGroup>
+
+<Tip>
+Include specific color values ("#3B82F6"), timing details ("fade in over 30 frames"), and spatial descriptions ("centered with 40px padding") for precise control.
+</Tip>
+
+## Describe Animation Feel
+
+Help the generator understand the motion style you want by describing the animation feel.
+
+**Good animation descriptors:**
+
+- "bouncy spring entrance" - Organic motion with overshoot
+- "smooth fade" - Linear opacity transition
+- "staggered timing" - Elements appear one after another
+- "elastic bounce" - Spring physics with high damping
+- "crossfade transition" - Elements fade in/out simultaneously
+
+<CodeGroup>
+```text Good Prompt
+Animated bar chart with staggered timing - each bar should bounce in with spring physics, starting from the left
+```
+
+```text Bad Prompt
+Animated bar chart
+```
+</CodeGroup>
+
+## Include Data Directly
+
+For charts and data visualizations, include the actual data in your prompt rather than asking the generator to use placeholder values.
+
+<CodeGroup>
+```text Good Prompt
+Create a bar chart showing monthly revenue: Jan $45k, Feb $52k, Mar $48k, Apr $61k, May $58k. Use blue bars with smooth spring animations.
+```
+
+```text Bad Prompt
+Create a bar chart with some sample data
+```
+</CodeGroup>
+
+<Note>
+The constants-first design means all data values will be declared at the top of the component, making them easy to customize later in the Monaco editor.
+</Note>
+
+## Specify Layout and Spacing
+
+Be explicit about how you want elements arranged and spaced.
+
+**Layout terminology:**
+
+- "full width with 60px padding" - Uses entire container width
+- "centered vertically" - Positioned in the middle of the canvas
+- "safe zones for Instagram Stories" - Respects platform-specific boundaries
+- "grid layout with 20px gaps" - Structured arrangement with specific spacing
+
+```text Example
+Create a product showcase with the product name at the top (80px padding), image centered, and price at the bottom. Use a white background with smooth fade transitions.
+```
+
+## Use Platform-Specific Context
+
+When creating social media content, mention the platform to automatically apply correct dimensions and safe zones.
+
+**Supported platforms:**
+
+- Instagram Stories (1080x1920, vertical)
+- TikTok (1080x1920, vertical)  
+- YouTube Shorts (1080x1920, vertical)
+- Instagram Reels (1080x1920, vertical)
+- Square posts (1080x1080)
+
+```text Example
+Create a TikTok-style countdown timer starting from 10, with large bold numbers and a pulsing scale effect
+```
+
+<Warning>
+The generator doesn't automatically resize your canvas. If you need a specific aspect ratio, set it in the Remotion configuration or mention it explicitly in your prompt.
+</Warning>
+
+## What Works Well
+
+The generator excels at specific types of animations:
+
+### Text Animations
+- Kinetic typography
+- Typewriter effects with cursor blink
+- Word carousels and rotating text
+- Text highlights and reveals
+
+### Data Visualizations  
+- Bar charts with animated entrances
+- Progress bars and loading indicators
+- Pie charts with staggered segments
+- Line graphs with drawing animations
+
+### UI Mockups
+- Chat/messaging interfaces (WhatsApp, iMessage)
+- Social media posts and stories
+- Notification animations
+- Card layouts with staggered reveals
+
+### Brand Content
+- Logo animations
+- Product showcases
+- Brand intros with smooth transitions
+- Abstract motion graphics
+
+## What to Avoid
+
+<Warning>
+The validation system will reject prompts that don't describe motion graphics content:
+
+**Invalid prompts:**
+- Questions ("What is 2+2?", "How do I...")
+- Requests for written content (poems, essays, code explanations)
+- Conversations or chat
+- Non-visual tasks (calculations, translations, summaries)
+</Warning>
+
+## Prompts for Different Skill Categories
+
+The system uses 8 guidance skills and 9 example skills. Referencing specific animation patterns helps activate the right expertise.
+
+### Charts and Data
+```text
+Create a histogram showing test scores: 0-50: 5 students, 51-70: 12 students, 71-85: 23 students, 86-100: 18 students. Use spring animations with staggered delays.
+```
+
+### Typography
+```text
+Kinetic typography animation: "Innovation" types on letter by letter, pauses, then "Starts Here" fades in below. Use a modern sans-serif font.
+```
+
+### Messaging UI
+```text
+WhatsApp conversation showing 3 received messages (gray bubbles, left side) followed by 2 sent messages (green bubbles, right side). Each message should slide in with a subtle bounce.
+```
+
+### Transitions
+```text
+Three scene transition: Scene 1 shows "Problem" in red, slides left and fades out. Scene 2 shows "Solution" in blue, holds for 60 frames. Scene 3 shows "Success" in green with a wipe transition.
+```
+
+### 3D Objects
+```text
+Rotating 3D cube with smooth camera movement. The cube should be blue metallic material, lit from above, rotating on Y-axis over 150 frames.
+```
+
+### Spring Physics
+```text
+Logo entrance with elastic bounce - starts off-screen top, drops down with strong overshoot, then settles with decreasing oscillation.
+```
+
+## Tips for Follow-Up Edits
+
+Once you have generated code, you can make targeted changes with natural language:
+
+```text Good Follow-Ups
+"Change the background color to navy blue"
+"Make the animation 50% slower"
+"Add a subtitle below the title saying 'Welcome'"
+"Increase the spring stiffness for bouncier motion"
+```
+
+<Tip>
+The system automatically detects whether to use targeted edits (for small changes) or full code replacement (for major restructuring). You don't need to specify which approach to use.
+</Tip>
+
+## Advanced: Multi-Element Timing
+
+For complex choreography with multiple elements, describe the sequence explicitly:
+
+```text Example
+Create a product launch countdown:
+1. Background fades from black to dark blue (0-30 frames)
+2. "Launching in..." fades in at top (frame 20-40)
+3. Countdown numbers 3, 2, 1 each appear for 30 frames with scale bounce (frame 50-140)
+4. Product name slides up from bottom with blur effect (frame 140-170)
+5. "Available Now" pulses at bottom (frame 180 onwards)
+```
+
+This level of detail helps the sequencing skill create precise timing with Remotion's `<Sequence>` component.
+
+## Summary
+
+**The formula for great prompts:**
+
+1. **What** - Describe the type of animation (chart, text, UI, etc.)
+2. **Details** - Include specific colors, text, data, and measurements  
+3. **Motion** - Specify animation style (spring, fade, stagger, etc.)
+4. **Layout** - Explain positioning and spacing
+5. **Timing** - Mention duration or frame counts if critical
+
+<Note>
+Remember: If the prompt is ambiguous, the generator will make reasonable choices rather than asking for clarification. Be specific to get exactly what you want!
+</Note>

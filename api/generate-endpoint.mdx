@@ -1,0 +1,79 @@
+---
+title: "Generate Endpoint"
+description: "POST /api/generate - Core endpoint for generating and editing Remotion animations"
+---
+
+The `/api/generate` endpoint is the primary API for creating and modifying Remotion animation components. It supports two modes of operation:
+
+1. **Initial Generation** - Streaming response for creating new animations from scratch
+2. **Follow-up Edits** - Non-streaming response for making targeted edits or full replacements
+
+## Endpoint
+
+```
+POST /api/generate
+```
+
+## Authentication
+
+Requires `OPENAI_API_KEY` environment variable to be set. The API will return a 400 error if the key is missing.
+
+## Request Modes
+
+### Initial Generation Mode
+
+When `isFollowUp` is `false` or not provided:
+- Uses **streaming** response for real-time code generation
+- Validates prompt is appropriate for motion graphics
+- Detects and applies relevant skills
+- Returns code via Server-Sent Events (SSE)
+- Prepends metadata event with detected skills
+
+### Follow-up Edit Mode
+
+When `isFollowUp` is `true` and `currentCode` is provided:
+- Uses **non-streaming** response for faster edits
+- Returns either targeted edits or full code replacement
+- Supports error correction and self-healing
+- Preserves manual user edits when requested
+
+## Response Format
+
+<CardGroup cols={2}>
+  <Card title="Initial Generation" icon="stream">
+    Streaming response via SSE with metadata events
+  </Card>
+  <Card title="Follow-up Edits" icon="pencil">
+    JSON response with code, summary, and metadata
+  </Card>
+</CardGroup>
+
+## Common Use Cases
+
+- Generate a new animation from a text prompt
+- Edit existing animations (change colors, timing, text)
+- Fix compilation errors automatically
+- Provide visual context via frame images
+- Maintain conversation history for iterative edits
+
+## Error Handling
+
+The endpoint returns specific error types:
+
+- `validation` - Prompt is not valid for motion graphics
+- `edit_failed` - Targeted edit could not be applied
+- Generic 500 errors for API/generation failures
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Request Format" icon="code" href="/api/request-format">
+    Learn about request parameters
+  </Card>
+  <Card title="Response Format" icon="file-code" href="/api/response-format">
+    Understand response structure
+  </Card>
+  <Card title="Streaming" icon="stream" href="/api/streaming">
+    How streaming responses work
+  </Card>
+</CardGroup>

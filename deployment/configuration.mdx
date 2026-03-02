@@ -1,0 +1,289 @@
+---
+title: Configuration
+description: Configure AWS Lambda resources and environment variables for optimal video rendering performance
+---
+
+This guide covers all configuration options for deploying and running video renders on AWS Lambda.
+
+## Lambda Resources
+
+The Lambda function configuration is defined in `config.mjs`. These settings determine the resources allocated to your rendering functions.
+
+### Region
+
+<ParamField path="REGION" type="AwsRegion" default="us-east-1">
+  The AWS region where your Lambda functions and S3 bucket will be deployed.
+  
+  ```javascript
+  export const REGION = "us-east-1";
+  ```
+  
+  Choose a region based on:
+  - Geographic proximity to your users
+  - Cost differences between regions
+  - Available AWS services and features
+  
+  Common regions:
+  - `us-east-1` - US East (N. Virginia)
+  - `us-west-2` - US West (Oregon)
+  - `eu-west-1` - Europe (Ireland)
+  - `ap-southeast-1` - Asia Pacific (Singapore)
+</ParamField>
+
+### Memory (RAM)
+
+<ParamField path="RAM" type="number" default="3009">
+  Memory allocated to Lambda function in megabytes (MB).
+  
+  ```javascript
+  export const RAM = 3009;
+  ```
+  
+  **Guidelines:**
+  - Minimum: 2048 MB for basic video rendering
+  - Recommended: 3009 MB for most use cases
+  - High complexity: 4096+ MB for 4K or effects-heavy videos
+  
+  <Note>
+    Higher RAM also increases CPU allocation proportionally. More RAM = faster rendering but higher cost.
+  </Note>
+</ParamField>
+
+### Disk Space
+
+<ParamField path="DISK" type="number" default="10240">
+  Ephemeral disk storage for Lambda function in megabytes (MB).
+  
+  ```javascript
+  export const DISK = 10240;
+  ```
+  
+  **Guidelines:**
+  - Default: 10240 MB (10 GB) handles most renders
+  - Increase if rendering:
+    - Very long videos (>5 minutes)
+    - High-resolution output (4K)
+    - Videos with large asset files
+  
+  <Warning>
+    Lambda disk space is limited to 10,240 MB maximum. For larger requirements, consider optimizing asset sizes.
+  </Warning>
+</ParamField>
+
+### Timeout
+
+<ParamField path="TIMEOUT" type="number" default="240">
+  Maximum execution time for Lambda function in seconds.
+  
+  ```javascript
+  export const TIMEOUT = 240;
+  ```
+  
+  **Guidelines:**
+  - Default: 240 seconds (4 minutes)
+  - Short videos (under 30s): 120 seconds may suffice
+  - Long videos (over 2 min): Consider 300+ seconds
+  
+  <Note>
+    AWS Lambda has a hard limit of 900 seconds (15 minutes). Remotion's distributed rendering splits work across multiple functions to handle longer videos.
+  </Note>
+</ParamField>
+
+### Site Name
+
+<ParamField path="SITE_NAME" type="string" default="my-next-app">
+  Identifier for your deployed Remotion site.
+  
+  ```javascript
+  export const SITE_NAME = "my-next-app";
+  ```
+  
+  This name is used to identify your deployed video template bundle. Change it if deploying multiple projects to the same AWS account.
+</ParamField>
+
+## Environment Variables
+
+Environment variables are configured in your `.env` file. These are required for both deployment and rendering.
+
+### AWS Credentials
+
+<ParamField path="REMOTION_AWS_ACCESS_KEY_ID" type="string" required>
+  AWS Access Key ID for authenticating with AWS services.
+  
+  ```bash
+  REMOTION_AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+  ```
+  
+  **How to get:**
+  1. Log into AWS Console
+  2. Navigate to IAM > Users > Security Credentials
+  3. Create a new access key
+  
+  <Warning>
+    Keep this secure. Never commit to version control or share publicly.
+  </Warning>
+  
+  Alternative: You can also use `AWS_ACCESS_KEY_ID` (standard AWS SDK environment variable).
+</ParamField>
+
+<ParamField path="REMOTION_AWS_SECRET_ACCESS_KEY" type="string" required>
+  AWS Secret Access Key paired with your Access Key ID.
+  
+  ```bash
+  REMOTION_AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  ```
+  
+  **Security:**
+  - Store securely (use environment variable management)
+  - Rotate regularly
+  - Never log or expose in client-side code
+  
+  Alternative: You can also use `AWS_SECRET_ACCESS_KEY` (standard AWS SDK environment variable).
+</ParamField>
+
+### OpenAI Configuration
+
+<ParamField path="OPENAI_API_KEY" type="string" required>
+  Your OpenAI API key for generating video content from text prompts.
+  
+  ```bash
+  OPENAI_API_KEY=sk-proj-...
+  ```
+  
+  **How to get:**
+  1. Sign up at [platform.openai.com](https://platform.openai.com)
+  2. Navigate to API Keys
+  3. Create a new secret key
+  
+  This is required for the prompt-to-motion-graphics functionality.
+</ParamField>
+
+## Configuration Validation
+
+The deployment script validates your configuration before deploying:
+
+```javascript
+if (!process.env.AWS_ACCESS_KEY_ID && !process.env.REMOTION_AWS_ACCESS_KEY_ID) {
+  console.log('The environment variable "REMOTION_AWS_ACCESS_KEY_ID" is not set.');
+  console.log("Lambda renders were not set up.");
+  console.log("Complete the Lambda setup: at https://www.remotion.dev/docs/lambda/setup");
+  process.exit(0);
+}
+```
+
+This prevents deployment failures due to missing credentials.
+
+## Function Name Generation
+
+The Lambda function name is automatically generated based on your configuration:
+
+```javascript
+const functionName = speculateFunctionName({
+  diskSizeInMb: DISK,
+  memorySizeInMb: RAM,
+  timeoutInSeconds: TIMEOUT,
+});
+// Example: "remotionlambda-mem3009mb-disk10240mb-240sec"
+```
+
+This ensures consistency between deployment and rendering operations. If you change any of these values in `config.mjs`, you must redeploy using `node deploy.mjs`.
+
+## Render-Time Configuration
+
+When rendering videos via the API, additional options are configured in the render endpoint:
+
+### Codec
+
+```javascript
+codec: "h264"
+```
+
+The video codec used for output. H.264 provides broad compatibility and good compression.
+
+### Frames Per Lambda
+
+```javascript
+framesPerLambda: 60
+```
+
+How many frames each Lambda function processes:
+- **Lower values** (30-50): More parallelization, faster renders, higher cost
+- **Higher values** (60-120): Less parallelization, slower renders, lower cost
+
+Optimal value depends on:
+- Video complexity (simpler = higher values)
+- Budget constraints
+- Time requirements
+
+### Download Behavior
+
+```javascript
+downloadBehavior: {
+  type: "download",
+  fileName: "video.mp4",
+}
+```
+
+Controls how the rendered video is delivered:
+- `type: "download"`: Video downloads when URL is accessed
+- `fileName`: Name of the downloaded file
+
+## Optimization Strategies
+
+### Cost Optimization
+
+1. **Reduce RAM** if renders complete successfully with lower memory
+2. **Increase framesPerLambda** to reduce number of function invocations
+3. **Choose cheaper regions** (us-east-1 is typically least expensive)
+4. **Set appropriate timeout** - don't over-allocate
+
+### Performance Optimization
+
+1. **Increase RAM** for faster CPU allocation and quicker renders
+2. **Decrease framesPerLambda** for more parallel processing
+3. **Choose region close to users** for faster upload/download
+4. **Increase timeout** if encountering timeout errors
+
+### Resource Planning
+
+| Video Duration | Recommended RAM | Recommended Timeout | Frames Per Lambda |
+|---------------|-----------------|---------------------|-------------------|
+| < 30 seconds  | 2048 MB         | 120 seconds         | 90                |
+| 30-60 seconds | 3009 MB         | 240 seconds         | 60                |
+| 1-3 minutes   | 3009 MB         | 300 seconds         | 60                |
+| 3-5 minutes   | 4096 MB         | 300 seconds         | 45                |
+
+## When to Update Configuration
+
+You must redeploy (`node deploy.mjs`) when changing:
+- `REGION`
+- `RAM`
+- `DISK`
+- `TIMEOUT`
+- `SITE_NAME`
+
+You do NOT need to redeploy when changing:
+- Environment variables (`.env` file)
+- Render-time options (codec, framesPerLambda)
+
+## Example Configuration
+
+Here's a complete example for a production setup:
+
+**config.mjs:**
+```javascript
+export const REGION = "us-east-1";
+export const SITE_NAME = "prod-motion-graphics";
+export const RAM = 3009;
+export const DISK = 10240;
+export const TIMEOUT = 240;
+```
+
+**.env:**
+```bash
+REMOTION_AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+REMOTION_AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+OPENAI_API_KEY=sk-proj-...
+```
+
+This configuration provides a good balance of performance and cost for most video rendering workloads.

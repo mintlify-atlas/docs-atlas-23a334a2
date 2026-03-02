@@ -1,0 +1,168 @@
+---
+title: 'Lambda Progress'
+description: 'Check the status and progress of Lambda render jobs'
+---
+
+## GET /api/lambda/progress
+
+Checks the rendering progress of a video job initiated via the `/api/lambda/render` endpoint. This endpoint should be polled periodically until the render is complete.
+
+<Note>
+This is actually a POST endpoint in the implementation (located at `src/app/api/lambda/progress/route.ts`), but functions as a progress check. Poll this endpoint every few seconds to track render progress.
+</Note>
+
+### Request Body
+
+<ParamField body="bucketName" type="string" required>
+  The S3 bucket name returned from the `/api/lambda/render` endpoint
+</ParamField>
+
+<ParamField body="id" type="string" required>
+  The render ID (renderId) returned from the `/api/lambda/render` endpoint
+</ParamField>
+
+### Response
+
+The response varies based on the current state of the render job. Three possible response types:
+
+#### Progress Response
+
+Returned while the render is in progress.
+
+<ResponseField name="type" type="string" value="progress">
+  Indicates the render is still in progress
+</ResponseField>
+
+<ResponseField name="progress" type="number">
+  A number between 0.03 and 1.0 representing the render progress percentage (e.g., 0.5 = 50% complete). Minimum value is 0.03 to indicate the job has started.
+</ResponseField>
+
+#### Done Response
+
+Returned when the render has completed successfully.
+
+<ResponseField name="type" type="string" value="done">
+  Indicates the render has completed
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  The public URL to download the rendered video file
+</ResponseField>
+
+<ResponseField name="size" type="number">
+  The size of the rendered video file in bytes
+</ResponseField>
+
+#### Error Response
+
+Returned when the render has failed.
+
+<ResponseField name="type" type="string" value="error">
+  Indicates the render encountered a fatal error
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Error message describing what went wrong
+</ResponseField>
+
+### Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/lambda/progress \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bucketName": "remotionlambda-useast1-abcdefgh",
+    "id": "8h3k9d2f-1a2b-3c4d-5e6f-7g8h9i0j1k2l"
+  }'
+```
+
+```javascript
+// Poll for progress
+const checkProgress = async (renderId, bucketName) => {
+  const response = await fetch('/api/lambda/progress', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      id: renderId,
+      bucketName: bucketName
+    })
+  });
+  
+  return await response.json();
+};
+
+// Usage with polling
+const pollRenderProgress = async (renderId, bucketName) => {
+  const poll = async () => {
+    const result = await checkProgress(renderId, bucketName);
+    
+    if (result.type === 'progress') {
+      console.log(`Progress: ${(result.progress * 100).toFixed(1)}%`);
+      // Poll again in 2 seconds
+      setTimeout(poll, 2000);
+    } else if (result.type === 'done') {
+      console.log('Render complete!');
+      console.log('Video URL:', result.url);
+      console.log('File size:', result.size, 'bytes');
+    } else if (result.type === 'error') {
+      console.error('Render failed:', result.message);
+    }
+  };
+  
+  poll();
+};
+
+// Start polling after initiating render
+const renderResponse = await fetch('/api/lambda/render', { /* ... */ });
+const { renderId, bucketName } = await renderResponse.json();
+pollRenderProgress(renderId, bucketName);
+```
+
+### Example Responses
+
+**In Progress**
+```json
+{
+  "type": "progress",
+  "progress": 0.42
+}
+```
+
+**Completed Successfully**
+```json
+{
+  "type": "done",
+  "url": "https://remotionlambda-useast1-abcdefgh.s3.amazonaws.com/renders/8h3k9d2f/video.mp4",
+  "size": 2847392
+}
+```
+
+**Failed with Error**
+```json
+{
+  "type": "error",
+  "message": "Composition not found: DynamicComp"
+}
+```
+
+### Polling Best Practices
+
+<Warning>
+- Poll every 2-5 seconds to balance responsiveness with API rate limits
+- Stop polling once you receive a `done` or `error` response
+- Implement a maximum timeout (e.g., 5 minutes) to handle stuck renders
+- Display the progress percentage to users for better UX
+</Warning>
+
+### Implementation Details
+
+The endpoint uses Remotion Lambda's `getRenderProgress()` function with the following configuration:
+
+- **Function Name**: Auto-speculated based on RAM, DISK, and TIMEOUT settings from `config.mjs`
+- **Region**: Uses the region configured in `config.mjs` (default: `us-east-1`)
+
+### Related Endpoints
+
+- [Lambda Render](/api/lambda-render) - Initiate a new render job

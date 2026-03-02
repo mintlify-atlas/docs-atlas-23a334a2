@@ -1,0 +1,495 @@
+---
+title: Live preview
+description: Understand how the live preview system works with the Remotion Player, code editor, and real-time compilation.
+---
+
+The live preview system provides real-time feedback by compiling user code and rendering it in the Remotion Player. It handles streaming updates, compilation errors, runtime errors, and frame capture for visual reference.
+
+## Architecture overview
+
+The live preview system consists of four main components:
+
+<CardGroup cols={2}>
+  <Card title="Code Editor" icon="code">
+    Monaco-based editor with TypeScript syntax highlighting, JSX support, and streaming overlays.
+  </Card>
+  <Card title="Compiler" icon="gear">
+    Babel-based transpiler that converts code strings into executable React components.
+  </Card>
+  <Card title="Animation Player" icon="play">
+    Remotion Player wrapper with controls, error boundaries, and settings.
+  </Card>
+  <Card title="Animation State" icon="database">
+    React hook managing code, compilation status, errors, and component state.
+  </Card>
+</CardGroup>
+
+## Code compilation
+
+The compiler transforms LLM-generated code into React components at runtime using Babel and dynamic function evaluation.
+
+### Compiler implementation
+
+```typescript
+export function compileCode(code: string): CompilationResult {
+  if (!code?.trim()) {
+    return { Component: null, error: "No code provided" };
+  }
+
+  try {
+    const componentBody = extractComponentBody(code);
+    const wrappedSource = `const DynamicAnimation = () => {\n${componentBody}\n};`;
+
+    const transpiled = Babel.transform(wrappedSource, {
+      presets: ["react", "typescript"],
+      filename: "dynamic-animation.tsx",
+    });
+
+    if (!transpiled.code) {
+      return { Component: null, error: "Transpilation failed" };
+    }
+
+    // ... setup available imports
+
+    const wrappedCode = `${transpiled.code}\nreturn DynamicAnimation;`;
+
+    const createComponent = new Function(
+      "React",
+      "Remotion",
+      "RemotionShapes",
+      "Lottie",
+      "ThreeCanvas",
+      "THREE",
+      // ... all whitelisted imports
+      wrappedCode,
+    );
+
+    const Component = createComponent(
+      React,
+      Remotion,
+      RemotionShapes,
+      Lottie,
+      ThreeCanvas,
+      THREE,
+      // ... inject actual modules
+    );
+
+    if (typeof Component !== "function") {
+      return {
+        Component: null,
+        error: "Code must be a function that returns a React component",
+      };
+    }
+
+    return { Component, error: null };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown compilation error";
+    return { Component: null, error: errorMessage };
+  }
+}
+```
+
+From `src/remotion/compiler.ts:80-214`
+
+### Import extraction
+
+The compiler strips import statements from LLM output and extracts the component body:
+
+```typescript
+function extractComponentBody(code: string): string {
+  // Strip all import statements (handles multi-line imports with newlines in braces)
+  let cleaned = code;
+
+  // Remove type imports: import type { ... } from "...";
+  cleaned = cleaned.replace(
+    /import\s+type\s*\{[\s\S]*?\}\s*from\s*["'][^"']+["'];?/g,
+    "",
+  );
+  // Remove combined default + named imports: import X, { ... } from "...";
+  cleaned = cleaned.replace(
+    /import\s+\w+\s*,\s*\{[\s\S]*?\}\s*from\s*["'][^"']+["'];?/g,
+    "",
+  );
+  // Remove multi-line named imports: import { ... } from "...";
+  cleaned = cleaned.replace(
+    /import\s*\{[\s\S]*?\}\s*from\s*["'][^"']+["'];?/g,
+    "",
+  );
+  // Remove namespace imports: import * as X from "...";
+  cleaned = cleaned.replace(
+    /import\s+\*\s+as\s+\w+\s+from\s*["'][^"']+["'];?/g,
+    "",
+  );
+  // Remove default imports: import X from "...";
+  cleaned = cleaned.replace(/import\s+\w+\s+from\s*["'][^"']+["'];?/g, "");
+  // Remove side-effect imports: import "...";
+  cleaned = cleaned.replace(/import\s*["'][^"']+["'];?/g, "");
+
+  cleaned = cleaned.trim();
+
+  // Extract body from "export const MyAnimation = () => { ... };"
+  const match = cleaned.match(
+    /^([\s\S]*?)export\s+const\s+\w+\s*=\s*\(\s*\)\s*=>\s*\{([\s\S]*)\};?\s*$/,
+  );
+
+  if (match) {
+    const helpers = match[1].trim();
+    const body = match[2].trim();
+    return helpers ? `${helpers}\n\n${body}` : body;
+  }
+
+  return cleaned;
+}
+```
+
+From `src/remotion/compiler.ts:34-77`
+
+<Note>
+  The compiler uses `new Function()` to evaluate transpiled code in a controlled environment. All external dependencies (React, Remotion, Three.js, etc.) are explicitly injected as function parameters.
+</Note>
+
+### Whitelisted libraries
+
+Only specific libraries are available during compilation:
+
+- **React**: Core hooks (`useState`, `useEffect`, `useRef`, `useMemo`)
+- **Remotion**: Animation primitives (`useCurrentFrame`, `useVideoConfig`, `interpolate`, `spring`, `AbsoluteFill`, `Sequence`, `Img`)
+- **Remotion Shapes**: SVG primitives (`Circle`, `Rect`, `Triangle`, `Star`, `Polygon`, `Ellipse`, `Heart`, `Pie`)
+- **Remotion Transitions**: Transition components and effects (`TransitionSeries`, `fade`, `slide`, `wipe`, `flip`, `clockWipe`)
+- **Remotion Three**: 3D canvas (`ThreeCanvas`)
+- **Three.js**: 3D primitives (`Vector3`, `Color`, `Mesh`, geometries, materials)
+- **Remotion Lottie**: Lottie animations (`Lottie`)
+
+Any imports not in this whitelist will cause compilation errors.
+
+## Animation state management
+
+The `useAnimationState` hook manages the compilation lifecycle:
+
+```typescript
+export interface AnimationState {
+  code: string;
+  Component: React.ComponentType | null;
+  error: string | null;
+  isCompiling: boolean;
+}
+
+export function useAnimationState(initialCode: string = "") {
+  const [state, setState] = useState<AnimationState>({
+    code: initialCode,
+    Component: null,
+    error: null,
+    isCompiling: false,
+  });
+
+  // Compile code when it changes (with debouncing handled by caller)
+  const compileCode = useCallback((code: string) => {
+    setState((prev) => ({ ...prev, isCompiling: true }));
+
+    const result: CompilationResult = compile(code);
+
+    setState((prev) => ({
+      ...prev,
+      Component: result.Component,
+      error: result.error,
+      isCompiling: false,
+    }));
+  }, []);
+
+  // Update code and trigger compilation
+  const setCode = useCallback((newCode: string) => {
+    setState((prev) => ({ ...prev, code: newCode }));
+  }, []);
+
+  // Auto-compile when component mounts with initial code
+  useEffect(() => {
+    if (initialCode) {
+      compileCode(initialCode);
+    }
+  }, []);
+
+  return {
+    ...state,
+    setCode,
+    compileCode,
+  };
+}
+```
+
+From `src/hooks/useAnimationState.ts:9-56`
+
+### Compilation triggers
+
+Compilation is triggered in different scenarios:
+
+1. **User edits** (debounced 500ms):
+```typescript
+const handleCodeChange = useCallback(
+  (newCode: string) => {
+    setCode(newCode);
+
+    // Clear existing debounce
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    // Skip compilation while streaming - will compile when streaming ends
+    if (isStreamingRef.current) {
+      return;
+    }
+
+    // Set new debounce
+    debounceRef.current = setTimeout(() => {
+      compileCode(newCode);
+    }, 500);
+  },
+  [setCode, compileCode],
+);
+```
+
+From `src/app/generate/page.tsx:144-171`
+
+2. **Streaming ends**:
+```typescript
+useEffect(() => {
+  const wasStreaming = isStreamingRef.current;
+  isStreamingRef.current = isStreaming;
+
+  // Compile when streaming ends - mark as AI change
+  if (wasStreaming && !isStreaming) {
+    markAsAiGenerated();
+    compileCode(codeRef.current);
+  }
+}, [isStreaming, compileCode, markAsAiGenerated]);
+```
+
+From `src/app/generate/page.tsx:134-142`
+
+<Warning>
+  Compilation is **skipped during streaming** to avoid syntax errors from incomplete code. The final compilation happens when streaming ends.
+</Warning>
+
+## Monaco editor integration
+
+The code editor uses Monaco with custom TypeScript configurations for JSX support:
+
+### TypeScript configuration
+
+```typescript
+const handleEditorMount = (
+  editorInstance: editor.IStandaloneCodeEditor,
+  monaco: Monaco,
+) => {
+  monacoRef.current = monaco;
+  editorRef.current = editorInstance;
+
+  const ts = (monaco.languages as any).typescript;
+
+  // Configure TypeScript compiler options for JSX support
+  ts?.typescriptDefaults?.setCompilerOptions({
+    target: ts.ScriptTarget?.ESNext,
+    module: ts.ModuleKind?.ESNext,
+    jsx: ts.JsxEmit?.Preserve,
+    allowNonTsExtensions: true,
+    strict: false,
+    noEmit: true,
+    esModuleInterop: true,
+    moduleResolution: ts.ModuleResolutionKind?.NodeJs,
+    skipLibCheck: true,
+  });
+
+  // Enable semantic validation for import checking
+  ts?.typescriptDefaults?.setDiagnosticsOptions({
+    noSemanticValidation: false,
+    noSyntaxValidation: false,
+  });
+
+  // Add React types so TS understands JSX
+  ts?.typescriptDefaults?.addExtraLib(
+    `declare namespace React { ... }`,
+    "react.d.ts",
+  );
+  // ... more type definitions
+};
+```
+
+From `src/components/CodeEditor/CodeEditor.tsx:70-98`
+
+### Streaming mode
+
+During streaming, the editor switches to plaintext mode to disable syntax highlighting and error markers:
+
+```typescript
+// Use typescript for semantic checking, plaintext during streaming
+const editorLanguage = isStreaming ? "plaintext" : "typescript";
+
+// Continuously clear markers while streaming
+useEffect(() => {
+  if (!isStreaming || !monacoRef.current) return;
+
+  const clearAllMarkers = () => {
+    monacoRef.current?.editor.getModels().forEach((model) => {
+      monacoRef.current?.editor.setModelMarkers(model, "javascript", []);
+      monacoRef.current?.editor.setModelMarkers(model, "typescript", []);
+      monacoRef.current?.editor.setModelMarkers(model, "owner", []);
+    });
+  };
+
+  clearAllMarkers();
+  const interval = setInterval(clearAllMarkers, 100);
+
+  return () => clearInterval(interval);
+}, [isStreaming, code]);
+```
+
+From `src/components/CodeEditor/CodeEditor.tsx:50-68`
+
+## Remotion Player integration
+
+The AnimationPlayer component wraps the Remotion Player with error handling and controls:
+
+```typescript
+return (
+  <>
+    <div className="w-full aspect-video max-h-[calc(100%-80px)] rounded-lg overflow-hidden shadow-[0_0_60px_rgba(0,0,0,0.5)]">
+      <Player
+        ref={playerRef}
+        key={Component.toString()}
+        component={Component}
+        durationInFrames={durationInFrames}
+        fps={fps}
+        compositionHeight={1080}
+        compositionWidth={1920}
+        style={{
+          width: "100%",
+          height: "100%",
+          backgroundColor: "transparent",
+        }}
+        controls
+        autoPlay
+        loop
+        errorFallback={renderErrorFallback}
+        spaceKeyToPlayOrPause={false}
+        clickToPlay={false}
+      />
+    </div>
+    <div className="flex items-center justify-between gap-6 mt-4">
+      <RenderControls
+        code={code}
+        durationInFrames={durationInFrames}
+        fps={fps}
+      />
+      <SettingsModal
+        durationInFrames={durationInFrames}
+        onDurationChange={onDurationChange}
+        fps={fps}
+        onFpsChange={onFpsChange}
+      />
+    </div>
+  </>
+);
+```
+
+From `src/components/AnimationPlayer/index.tsx:129-166`
+
+### Error boundaries
+
+Runtime errors are caught by the Player's error boundary:
+
+```typescript
+const renderErrorFallback: ErrorFallback = ({ error }) => {
+  return (
+    <ErrorDisplay
+      error={error.message || "An error occurred while rendering"}
+      title="Runtime Error"
+      variant="fullscreen"
+      size="lg"
+    />
+  );
+};
+```
+
+From `src/components/AnimationPlayer/index.tsx:15-24`
+
+Runtime errors are also propagated to the parent for auto-correction:
+
+```typescript
+useEffect(() => {
+  const player = playerRef.current;
+  if (!player || !onRuntimeError) return;
+
+  const handleError = (e: { detail: { error: Error } }) => {
+    onRuntimeError(e.detail.error.message);
+  };
+
+  player.addEventListener("error", handleError);
+  return () => {
+    player.removeEventListener("error", handleError);
+  };
+}, [onRuntimeError, Component]);
+```
+
+From `src/components/AnimationPlayer/index.tsx:58-71`
+
+## Frame capture
+
+Users can capture the current frame as a visual reference for follow-up prompts:
+
+```typescript
+const handleCapture = async () => {
+  if (!Component || isCapturing || !canAddMore) return;
+
+  setIsCapturing(true);
+  try {
+    const base64 = await captureFrame(Component, currentFrame, {
+      width: 1920,
+      height: 1080,
+      fps,
+      durationInFrames,
+    });
+    addImages([base64]);
+  } catch (error) {
+    console.error("Failed to capture frame:", error);
+  } finally {
+    setIsCapturing(false);
+  }
+};
+```
+
+From `src/components/ChatSidebar/ChatInput.tsx:85-102`
+
+Captured frames are sent to the LLM as base64-encoded images in follow-up requests, enabling visual context for prompts like "make the text match the color of the background in this frame."
+
+## State synchronization
+
+The preview system maintains several pieces of state:
+
+- **Code**: Current editor content
+- **Component**: Compiled React component
+- **Compilation error**: Syntax/type errors from Babel
+- **Runtime error**: Errors from executing the component
+- **Frame number**: Current playback position
+- **Settings**: FPS and duration
+
+These states are synchronized across components:
+
+```typescript
+const {
+  code,
+  Component,
+  error: compilationError,
+  isCompiling,
+  setCode,
+  compileCode,
+} = useAnimationState(examples[0]?.code || "");
+
+const [runtimeError, setRuntimeError] = useState<string | null>(null);
+const codeError = compilationError || runtimeError;
+```
+
+From `src/app/generate/page.tsx:76-88`
+
+<Tip>
+  The system combines compilation and runtime errors into a single `codeError` state for unified error handling and auto-correction.
+</Tip>

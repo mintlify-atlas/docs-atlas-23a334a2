@@ -1,0 +1,390 @@
+---
+title: 3D Animation with Three.js
+description: Proper setup and animation patterns for 3D scenes using Remotion's ThreeCanvas and Three.js integration
+---
+
+<Note>
+  **Impact:** MEDIUM - Enables proper 3D scene setup and smooth animations
+</Note>
+
+This skill covers integrating Three.js with Remotion using `ThreeCanvas`, including proper lighting, camera setup, and frame-based animations.
+
+## ThreeCanvas Setup
+
+Always wrap 3D content in `ThreeCanvas` and include proper lighting.
+
+<CodeGroup>
+```tsx Incorrect (missing ThreeCanvas wrapper)
+<mesh rotation={[0, frame * 0.02, 0]}>
+  <boxGeometry args={[2, 2, 2]} />
+  <meshStandardMaterial color="#4a9eff" />
+</mesh>
+```
+
+```tsx Correct (proper ThreeCanvas setup)
+import { ThreeCanvas } from "@remotion/three";
+
+<ThreeCanvas>
+  <ambientLight intensity={0.5} />
+  <pointLight position={[10, 10, 10]} />
+  <mesh rotation={[0, frame * 0.02, 0]}>
+    <boxGeometry args={[2, 2, 2]} />
+    <meshStandardMaterial color="#4a9eff" />
+  </mesh>
+</ThreeCanvas>;
+```
+</CodeGroup>
+
+<Warning>
+  Without `ThreeCanvas`, Three.js components will not render. It sets up the WebGL renderer and scene context.
+</Warning>
+
+## Lighting Setup
+
+Every 3D scene needs ambient + directional light for depth.
+
+<CodeGroup>
+```tsx Incorrect (no lighting - objects appear flat/black)
+<ThreeCanvas>
+  <mesh>
+    <sphereGeometry args={[1, 32, 32]} />
+    <meshStandardMaterial color="red" />
+  </mesh>
+</ThreeCanvas>
+```
+
+```tsx Correct (proper lighting)
+<ThreeCanvas>
+  <ambientLight intensity={0.4} />
+  <directionalLight position={[5, 5, 5]} intensity={0.8} />
+  <mesh>
+    <sphereGeometry args={[1, 32, 32]} />
+    <meshStandardMaterial color="red" />
+  </mesh>
+</ThreeCanvas>
+```
+</CodeGroup>
+
+<Accordion title="Why two lights?">
+  - **ambientLight:** Provides base illumination, prevents pure black shadows
+  - **directionalLight/pointLight:** Creates highlights and shadows, gives depth
+  
+  Without both, 3D objects look flat or completely black.
+</Accordion>
+
+## Light Types
+
+<AccordionGroup>
+  <Accordion title="ambientLight" icon="sun">
+    Uniform lighting from all directions.
+    
+    ```tsx
+    <ambientLight intensity={0.4} />
+    ```
+    
+    **Use for:** Base lighting, preventing pure black areas
+    
+    **Intensity:** 0.3-0.6 typical range
+  </Accordion>
+  
+  <Accordion title="directionalLight" icon="arrow-down">
+    Parallel rays from a direction (like sunlight).
+    
+    ```tsx
+    <directionalLight position={[5, 5, 5]} intensity={0.8} />
+    ```
+    
+    **Use for:** Main light source, creating shadows
+    
+    **Intensity:** 0.5-1.0 typical range
+  </Accordion>
+  
+  <Accordion title="pointLight" icon="lightbulb">
+    Light emanating from a point in all directions.
+    
+    ```tsx
+    <pointLight position={[10, 10, 10]} intensity={1.0} />
+    ```
+    
+    **Use for:** Localized lighting, dramatic effects
+    
+    **Intensity:** 0.8-2.0 typical range
+  </Accordion>
+  
+  <Accordion title="spotLight" icon="flashlight">
+    Cone of light pointing in a direction.
+    
+    ```tsx
+    <spotLight 
+      position={[10, 10, 5]} 
+      angle={0.3} 
+      intensity={1.0}
+    />
+    ```
+    
+    **Use for:** Focused lighting, stage effects
+  </Accordion>
+</AccordionGroup>
+
+## Frame-Based Rotation
+
+Use frame directly for smooth continuous rotation.
+
+```tsx
+const frame = useCurrentFrame();
+const rotationY = frame * 0.02; // Adjust speed with multiplier
+
+<mesh rotation={[0, rotationY, 0]}>
+  <boxGeometry args={[2, 2, 2]} />
+  <meshStandardMaterial color="#4a9eff" />
+</mesh>;
+```
+
+<Tip>
+  Rotation values are in **radians**. Multiply frame by small values (0.01-0.05) for smooth rotation. Higher values spin faster.
+</Tip>
+
+## Floating/Hovering Animation
+
+Use sine wave on Y position for organic floating effect.
+
+```tsx
+const frame = useCurrentFrame();
+const floatY = Math.sin(frame * 0.1) * 0.3; // Amplitude 0.3, speed 0.1
+
+<mesh position={[0, floatY, 0]}>{/* geometry and material */}</mesh>;
+```
+
+<Accordion title="Sine wave parameters explained">
+  ```tsx
+  Math.sin(frame * speed) * amplitude
+  ```
+  
+  - **speed (0.1):** How fast it oscillates. Higher = faster bounce
+  - **amplitude (0.3):** How far it moves. Higher = larger motion
+  
+  At 30fps:
+  - `speed: 0.1` = ~5 second cycle
+  - `speed: 0.2` = ~2.5 second cycle
+</Accordion>
+
+## Spring-Based Scale Entrance
+
+Use `spring()` for bouncy 3D object entrances.
+
+```tsx
+const scaleProgress = spring({
+  frame,
+  fps,
+  config: { damping: 12, stiffness: 100 },
+});
+
+<mesh scale={[scaleProgress, scaleProgress, scaleProgress]}>
+  {/* geometry and material */}
+</mesh>;
+```
+
+<Note>
+  Apply the same scale value to all three axes (X, Y, Z) for uniform scaling. Use different values for squash/stretch effects.
+</Note>
+
+## Camera Positioning
+
+Position camera at reasonable distance for scene visibility.
+
+```tsx
+<ThreeCanvas camera={{ position: [0, 0, 5], fov: 75 }}>
+  {/* scene content */}
+</ThreeCanvas>
+```
+
+<AccordionGroup>
+  <Accordion title="position" icon="location-dot">
+    `[x, y, z]` coordinates in 3D space.
+    
+    ```tsx
+    position: [0, 0, 5]  // 5 units back from origin
+    position: [3, 2, 5]  // offset right and up
+    ```
+    
+    **Typical values:** Z distance of 3-10 units
+  </Accordion>
+  
+  <Accordion title="fov (field of view)" icon="expand">
+    Camera viewing angle in degrees.
+    
+    ```tsx
+    fov: 45  // Narrow, telephoto
+    fov: 75  // Standard, natural
+    fov: 90  // Wide angle
+    ```
+    
+    **Default:** 75 degrees (good starting point)
+  </Accordion>
+</AccordionGroup>
+
+## Common Geometries
+
+<Tabs>
+  <Tab title="Box">
+    ```tsx
+    <boxGeometry args={[width, height, depth]} />
+    ```
+    
+    Example:
+    ```tsx
+    <boxGeometry args={[2, 2, 2]} /> // 2x2x2 cube
+    ```
+  </Tab>
+  
+  <Tab title="Sphere">
+    ```tsx
+    <sphereGeometry args={[radius, widthSegments, heightSegments]} />
+    ```
+    
+    Example:
+    ```tsx
+    <sphereGeometry args={[1, 32, 32]} /> // Smooth sphere
+    ```
+    
+    Higher segments = smoother surface
+  </Tab>
+  
+  <Tab title="Cylinder">
+    ```tsx
+    <cylinderGeometry args={[
+      radiusTop, 
+      radiusBottom, 
+      height, 
+      radialSegments
+    ]} />
+    ```
+    
+    Example:
+    ```tsx
+    <cylinderGeometry args={[1, 1, 3, 32]} />
+    ```
+  </Tab>
+  
+  <Tab title="Torus">
+    ```tsx
+    <torusGeometry args={[radius, tube, radialSegments, tubularSegments]} />
+    ```
+    
+    Example:
+    ```tsx
+    <torusGeometry args={[1, 0.4, 16, 100]} /> // Donut
+    ```
+  </Tab>
+</Tabs>
+
+## Materials
+
+<CodeGroup>
+```tsx Standard (physically accurate)
+<meshStandardMaterial 
+  color="#4a9eff" 
+  metalness={0.5} 
+  roughness={0.2}
+/>
+```
+
+```tsx Basic (no lighting)
+<meshBasicMaterial color="#4a9eff" />
+// Always same color, ignores lights
+```
+
+```tsx Phong (shiny)
+<meshPhongMaterial 
+  color="#4a9eff" 
+  shininess={100}
+/>
+```
+</CodeGroup>
+
+<Note>
+  `meshStandardMaterial` is the most realistic and works best with proper lighting. `meshBasicMaterial` doesn't respond to lights and is useful for flat-shaded objects or debugging.
+</Note>
+
+## Key Patterns
+
+<Steps>
+  <Step title="Setup ThreeCanvas">
+    ```tsx
+    <ThreeCanvas camera={{ position: [0, 0, 5], fov: 75 }}>
+    ```
+  </Step>
+  
+  <Step title="Add Lighting">
+    ```tsx
+    <ambientLight intensity={0.4} />
+    <directionalLight position={[5, 5, 5]} intensity={0.8} />
+    ```
+  </Step>
+  
+  <Step title="Create Mesh">
+    ```tsx
+    <mesh rotation={[0, frame * 0.02, 0]}>
+      <boxGeometry args={[2, 2, 2]} />
+      <meshStandardMaterial color="#4a9eff" />
+    </mesh>
+    ```
+  </Step>
+  
+  <Step title="Animate with frame">
+    ```tsx
+    rotation={[0, frame * 0.02, 0]}
+    position={[0, Math.sin(frame * 0.1) * 0.3, 0]}
+    ```
+  </Step>
+</Steps>
+
+## Common Mistakes to Avoid
+
+<Warning>
+  **Don't forget ThreeCanvas** - Three.js components must be wrapped in `<ThreeCanvas>` or they won't render.
+</Warning>
+
+<Warning>
+  **Don't skip lighting** - Without lights, `meshStandardMaterial` objects appear black. Always add `ambientLight` + `directionalLight`.
+</Warning>
+
+<Warning>
+  **Don't use degrees for rotation** - Three.js uses radians. `360°` = `2 * Math.PI` radians.
+</Warning>
+
+<Warning>
+  **Don't position camera at origin** - If camera is at `[0, 0, 0]`, it's inside objects. Move it back on Z-axis: `[0, 0, 5]`.
+</Warning>
+
+## Advanced: Animated Camera
+
+```tsx
+const frame = useCurrentFrame();
+const cameraZ = interpolate(frame, [0, 60], [10, 5]);
+const cameraY = Math.sin(frame * 0.05) * 2;
+
+<ThreeCanvas 
+  camera={{ 
+    position: [0, cameraY, cameraZ], 
+    fov: 75 
+  }}
+>
+  {/* scene */}
+</ThreeCanvas>
+```
+
+<Tip>
+  Animating the camera creates cinematic movement. Combine position changes with rotation for orbit effects.
+</Tip>
+
+## Related Skills
+
+<CardGroup cols={2}>
+  <Card title="Spring Physics" icon="atom" href="/skills/spring-physics">
+    Add bounce to 3D objects
+  </Card>
+  <Card title="Sequencing" icon="list-timeline" href="/skills/sequencing">
+    Coordinate multiple 3D elements
+  </Card>
+</CardGroup>

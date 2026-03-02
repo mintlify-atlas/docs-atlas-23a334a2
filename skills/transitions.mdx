@@ -1,0 +1,281 @@
+---
+title: Scene Transitions
+description: Enable smooth scene changes and professional video flow with TransitionSeries and custom crossfades
+---
+
+<Note>
+  **Impact:** HIGH - Enables smooth scene changes and professional video flow
+</Note>
+
+This skill covers using Remotion's `TransitionSeries` API and creating custom transitions between scenes or visual states.
+
+## TransitionSeries for Scene Changes
+
+Use `TransitionSeries` to animate between multiple scenes or clips.
+
+<CodeGroup>
+```tsx Incorrect (abrupt scene cuts)
+<Sequence from={0} durationInFrames={60}>
+  <SceneA />
+</Sequence>
+<Sequence from={60} durationInFrames={60}>
+  <SceneB />
+</Sequence>
+```
+
+```tsx Correct (smooth transitions)
+import { TransitionSeries, linearTiming } from "@remotion/transitions";
+import { fade } from "@remotion/transitions/fade";
+
+<TransitionSeries>
+  <TransitionSeries.Sequence durationInFrames={60}>
+    <SceneA />
+  </TransitionSeries.Sequence>
+  <TransitionSeries.Transition
+    presentation={fade()}
+    timing={linearTiming({ durationInFrames: 15 })}
+  />
+  <TransitionSeries.Sequence durationInFrames={60}>
+    <SceneB />
+  </TransitionSeries.Sequence>
+</TransitionSeries>;
+```
+</CodeGroup>
+
+<Tip>
+  `TransitionSeries` automatically handles the overlap between sequences, making it much easier than manually managing opacity or position transitions.
+</Tip>
+
+## Available Transition Types
+
+Import transitions from their respective modules:
+
+```tsx
+import { fade } from "@remotion/transitions/fade";
+import { slide } from "@remotion/transitions/slide";
+import { wipe } from "@remotion/transitions/wipe";
+import { flip } from "@remotion/transitions/flip";
+import { clockWipe } from "@remotion/transitions/clock-wipe";
+```
+
+<AccordionGroup>
+  <Accordion title="fade" icon="circle-half-stroke">
+    Crossfade between scenes with opacity transition.
+    
+    **Best for:** General purpose, subtle scene changes
+    
+    ```tsx
+    presentation={fade()}
+    ```
+  </Accordion>
+  
+  <Accordion title="slide" icon="arrow-right">
+    Slide one scene out while the next slides in.
+    
+    **Best for:** Directional flow, sequential content
+    
+    ```tsx
+    presentation={slide({ direction: "from-left" })}
+    ```
+  </Accordion>
+  
+  <Accordion title="wipe" icon="paintbrush">
+    Reveal next scene with a directional wipe.
+    
+    **Best for:** Dramatic reveals, chapter transitions
+    
+    ```tsx
+    presentation={wipe({ direction: "from-top" })}
+    ```
+  </Accordion>
+  
+  <Accordion title="flip" icon="rotate">
+    3D flip effect between scenes.
+    
+    **Best for:** Playful content, card-flip metaphors
+    
+    ```tsx
+    presentation={flip({ direction: "horizontal" })}
+    ```
+  </Accordion>
+  
+  <Accordion title="clockWipe" icon="clock">
+    Circular wipe emanating from center.
+    
+    **Best for:** Time-based content, countdown reveals
+    
+    ```tsx
+    presentation={clockWipe()}
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Slide Transition with Direction
+
+Specify slide direction for enter/exit animations.
+
+```tsx
+import { slide } from "@remotion/transitions/slide";
+
+<TransitionSeries.Transition
+  presentation={slide({ direction: "from-left" })}
+  timing={linearTiming({ durationInFrames: 20 })}
+/>;
+```
+
+**Available directions:** `"from-left"`, `"from-right"`, `"from-top"`, `"from-bottom"`
+
+<Note>
+  Direction refers to where the **incoming** scene comes from. For example, `"from-left"` means the new scene slides in from the left side.
+</Note>
+
+## Custom Crossfade Without TransitionSeries
+
+For simple opacity crossfades within a single component:
+
+```tsx
+const TRANSITION_START = 60;
+const TRANSITION_DURATION = 15;
+
+const scene1Opacity = interpolate(
+  frame,
+  [TRANSITION_START, TRANSITION_START + TRANSITION_DURATION],
+  [1, 0],
+  { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+);
+
+const scene2Opacity = interpolate(
+  frame,
+  [TRANSITION_START, TRANSITION_START + TRANSITION_DURATION],
+  [0, 1],
+  { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+);
+
+<AbsoluteFill style={{ opacity: scene1Opacity }}><SceneA /></AbsoluteFill>
+<AbsoluteFill style={{ opacity: scene2Opacity }}><SceneB /></AbsoluteFill>
+```
+
+<Warning>
+  Use `AbsoluteFill` to ensure both scenes occupy the same space. Otherwise they'll stack vertically.
+</Warning>
+
+## Timing Options
+
+```tsx
+import { linearTiming, springTiming } from "@remotion/transitions";
+
+// Linear timing - constant speed
+linearTiming({ durationInFrames: 20 });
+
+// Spring timing - organic motion
+springTiming({ config: { damping: 200 }, durationInFrames: 25 });
+```
+
+<Tabs>
+  <Tab title="linearTiming">
+    **Use when:** You need predictable, constant-speed transitions
+    
+    **Configuration:**
+    ```tsx
+    linearTiming({ durationInFrames: 20 })
+    ```
+    
+    **Best for:** Fade, wipe, slide transitions
+  </Tab>
+  
+  <Tab title="springTiming">
+    **Use when:** You want organic, bouncy motion
+    
+    **Configuration:**
+    ```tsx
+    springTiming({
+      config: { damping: 200, stiffness: 100 },
+      durationInFrames: 25
+    })
+    ```
+    
+    **Best for:** Flip, playful slide transitions
+  </Tab>
+</Tabs>
+
+## Key Patterns
+
+<Steps>
+  <Step title="Choose Appropriate Transition">
+    - **Fade:** Default choice for most scene changes
+    - **Slide:** When there's directional progression
+    - **Wipe:** For dramatic chapter breaks
+    - **Flip:** For playful, card-like reveals
+  </Step>
+  
+  <Step title="Set Appropriate Duration">
+    - Fast (10-15 frames): Quick cuts, energetic pacing
+    - Medium (15-25 frames): Standard professional transitions
+    - Slow (25-40 frames): Dramatic, cinematic transitions
+  </Step>
+  
+  <Step title="Match Timing to Content">
+    Use `linearTiming` for smooth, predictable transitions. Use `springTiming` for organic, bouncy effects.
+  </Step>
+</Steps>
+
+## Common Mistakes to Avoid
+
+<Warning>
+  **Don't use abrupt cuts between scenes** - Always transition smoothly unless you specifically want a jarring effect.
+</Warning>
+
+<Warning>
+  **Don't make transitions too long** - 15-25 frames is usually sufficient. Longer transitions feel sluggish.
+</Warning>
+
+<Warning>
+  **Don't forget AbsoluteFill for custom crossfades** - Without it, scenes will stack vertically instead of overlapping.
+</Warning>
+
+<Warning>
+  **Don't mix too many transition types** - Stick to 1-2 transition styles per video for visual consistency.
+</Warning>
+
+## Advanced: Multiple Scene Transitions
+
+```tsx
+<TransitionSeries>
+  <TransitionSeries.Sequence durationInFrames={60}>
+    <Intro />
+  </TransitionSeries.Sequence>
+  
+  <TransitionSeries.Transition
+    presentation={fade()}
+    timing={linearTiming({ durationInFrames: 15 })}
+  />
+  
+  <TransitionSeries.Sequence durationInFrames={90}>
+    <MainContent />
+  </TransitionSeries.Sequence>
+  
+  <TransitionSeries.Transition
+    presentation={slide({ direction: "from-left" })}
+    timing={linearTiming({ durationInFrames: 20 })}
+  />
+  
+  <TransitionSeries.Sequence durationInFrames={45}>
+    <Outro />
+  </TransitionSeries.Sequence>
+</TransitionSeries>
+```
+
+<Tip>
+  You can vary transition types within the same `TransitionSeries` for visual interest, but maintain consistency in timing.
+</Tip>
+
+## Related Skills
+
+<CardGroup cols={2}>
+  <Card title="Sequencing" icon="list-timeline" href="/skills/sequencing">
+    Control when scenes appear
+  </Card>
+  <Card title="Spring Physics" icon="atom" href="/skills/spring-physics">
+    Use springs in transitions
+  </Card>
+</CardGroup>

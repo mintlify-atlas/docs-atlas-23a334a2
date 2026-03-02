@@ -1,0 +1,189 @@
+---
+title: Charts & Data Visualization
+description: Patterns and best practices for creating animated charts, graphs, and data visualizations in Remotion
+---
+
+<Note>
+  **Impact:** HIGH - Significantly improves data visualization quality and animation polish
+</Note>
+
+This skill provides guidance for creating professional data visualizations with smooth, staggered animations and proper labeling.
+
+## Bar Chart Animations
+
+Stagger bar entrances with 3-5 frame delays and use `spring()` for organic motion.
+
+<CodeGroup>
+```tsx Incorrect (all bars animate together)
+const bars = data.map((item, i) => {
+  const height = spring({ frame, fps, config: { damping: 18 } });
+  return <div style={{ height: height * item.value }} />;
+});
+```
+
+```tsx Correct (staggered entrances)
+const STAGGER_DELAY = 5;
+
+const bars = data.map((item, i) => {
+  const delay = i * STAGGER_DELAY;
+  const height = spring({
+    frame: frame - delay,
+    fps,
+    config: { damping: 18, stiffness: 80 },
+  });
+  return <div style={{ height: height * item.value }} />;
+});
+```
+</CodeGroup>
+
+<Tip>
+  Staggering creates visual hierarchy and makes complex data easier to process. Use 3-5 frame delays between bars for the best effect.
+</Tip>
+
+## Always Include Y-Axis Labels
+
+Charts without axis labels are hard to read. Always add labeled tick marks.
+
+<CodeGroup>
+```tsx Incorrect (no axis)
+<div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>{bars}</div>
+```
+
+```tsx Correct (with Y-axis)
+const yAxisSteps = [0, 25, 50, 75, 100];
+
+<div style={{ display: "flex" }}>
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "space-between",
+    }}
+  >
+    {yAxisSteps.reverse().map((step) => (
+      <span style={{ fontSize: 12, color: "#888" }}>{step}</span>
+    ))}
+  </div>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "flex-end",
+      gap: 8,
+      borderLeft: "1px solid #333",
+    }}
+  >
+    {bars}
+  </div>
+</div>;
+```
+</CodeGroup>
+
+<Warning>
+  Charts without axis labels fail to communicate scale and context. Always include both axes with clear labels.
+</Warning>
+
+## Value Labels Inside Bars
+
+Position value labels inside bars when height is sufficient, fade in after bar animates.
+
+```tsx
+const barHeight = normalizedHeight * progress;
+
+<div style={{ height: barHeight, backgroundColor: COLOR_BAR }}>
+  {barHeight > 30 && (
+    <span style={{ opacity: progress, fontSize: 11 }}>
+      {item.value.toLocaleString()}
+    </span>
+  )}
+</div>;
+```
+
+<Accordion title="Why conditionally render labels?">
+  Small bars don't have enough space for readable labels. The `barHeight > 30` check ensures labels only appear when there's sufficient space, preventing text overflow and visual clutter.
+</Accordion>
+
+## Pie Chart Animation
+
+Animate segments using `stroke-dashoffset`, starting from 12 o'clock.
+
+```tsx
+const circumference = 2 * Math.PI * radius;
+const segmentLength = (value / total) * circumference;
+const offset = interpolate(progress, [0, 1], [segmentLength, 0]);
+
+<circle
+  r={radius}
+  cx={center}
+  cy={center}
+  fill="none"
+  stroke={color}
+  strokeWidth={strokeWidth}
+  strokeDasharray={`${segmentLength} ${circumference}`}
+  strokeDashoffset={offset}
+  transform={`rotate(-90 ${center} ${center})`}
+/>;
+```
+
+<Note>
+  The `rotate(-90)` transform starts the animation at 12 o'clock (top) instead of 3 o'clock (right), which is the default SVG behavior.
+</Note>
+
+## Key Patterns
+
+<AccordionGroup>
+  <Accordion title="Stagger Timing" icon="clock">
+    Use calculated delays for consistent timing:
+    
+    ```tsx
+    const STAGGER_DELAY = 5; // frames between each bar
+    const delay = i * STAGGER_DELAY;
+    ```
+    
+    **3-5 frames** works well for most charts. Faster feels rushed, slower feels sluggish.
+  </Accordion>
+  
+  <Accordion title="Spring Configuration" icon="wave-pulse">
+    For chart animations, use moderate damping:
+    
+    ```tsx
+    config: { damping: 18, stiffness: 80 }
+    ```
+    
+    This provides subtle bounce without looking cartoonish.
+  </Accordion>
+  
+  <Accordion title="Conditional Rendering" icon="eye">
+    Show elements only when space permits:
+    
+    ```tsx
+    {barHeight > 30 && <Label />}
+    ```
+    
+    Prevents cramped, unreadable layouts.
+  </Accordion>
+</AccordionGroup>
+
+## Common Mistakes to Avoid
+
+<Warning>
+  **Don't animate all bars simultaneously** - It's overwhelming and loses the data story. Stagger entrances instead.
+</Warning>
+
+<Warning>
+  **Don't skip axis labels** - Context-free charts are confusing. Always include labeled axes.
+</Warning>
+
+<Warning>
+  **Don't use linear interpolation for organic elements** - Use `spring()` instead of `interpolate()` for natural motion.
+</Warning>
+
+## Related Skills
+
+<CardGroup cols={2}>
+  <Card title="Spring Physics" icon="atom" href="/skills/spring-physics">
+    Learn how to configure springs for different effects
+  </Card>
+  <Card title="Sequencing" icon="list-timeline" href="/skills/sequencing">
+    Master staggered animations and timing
+  </Card>
+</CardGroup>

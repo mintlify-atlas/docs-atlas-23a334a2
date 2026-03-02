@@ -1,122 +1,122 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Remotion Prompt to Motion Graphics",
+  "theme": "aspen",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#6366f1"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/remotion-dev/template-prompt-to-motion-graphics-saas"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/remotion-dev/template-prompt-to-motion-graphics-saas"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "installation"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Features",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "features/prompt-validation",
+              "features/skills-system",
+              "features/code-generation",
+              "features/live-preview"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Skills Reference",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "skills/overview",
+              "skills/charts",
+              "skills/typography",
+              "skills/messaging",
+              "skills/transitions",
+              "skills/sequencing",
+              "skills/spring-physics",
+              "skills/social-media",
+              "skills/3d"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Deployment",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "deployment/aws-lambda-setup",
+              "deployment/rendering-videos",
+              "deployment/configuration"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/prompting-best-practices",
+              "guides/working-with-images",
+              "guides/customizing-animations",
+              "guides/error-handling"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Generation API",
             "pages": [
-              "api-reference/introduction"
+              "api/generate-endpoint",
+              "api/request-format",
+              "api/response-format",
+              "api/streaming"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Lambda API",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/lambda-render",
+              "api/lambda-progress"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Examples",
+        "groups": [
+          {
+            "group": "Example Gallery",
+            "pages": [
+              "examples/overview",
+              "examples/typewriter-effect",
+              "examples/chat-bubbles",
+              "examples/metric-counters",
+              "examples/bar-charts",
+              "examples/dvd-screensaver"
+            ]
+          },
+          {
+            "group": "Code Snippets",
+            "pages": [
+              "examples/animated-shapes",
+              "examples/histogram",
+              "examples/progress-bar",
+              "examples/lottie-animations"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

@@ -1,0 +1,148 @@
+---
+title: Introduction
+description: Transform natural language prompts into production-ready Remotion animations with AI-powered code generation
+---
+
+<img
+  className="block"
+  src="https://github.com/remotion-dev/logo/raw/main/animated-logo-banner-light.gif"
+  alt="Remotion Logo"
+/>
+
+## What is Remotion Prompt to Motion Graphics?
+
+Remotion Prompt to Motion Graphics is an AI-powered SaaS platform that transforms natural language descriptions into fully functional Remotion animation code. Simply describe the animation you want to create, and the system generates production-ready React components with smooth animations, professional styling, and editable constants.
+
+## How it works
+
+The platform uses a sophisticated multi-stage pipeline to ensure high-quality code generation:
+
+<Steps>
+  <Step title="Validation">
+    A lightweight classifier determines if your prompt describes valid motion graphics content before making expensive model calls.
+    
+    **Accepted**: Animated text, data visualizations, UI animations, social media content, abstract motion graphics
+    
+    **Rejected**: Questions, conversational requests, non-visual tasks
+  </Step>
+  
+  <Step title="Skill detection">
+    The system analyzes your prompt to identify which skills are relevant. Skills are modular knowledge units that provide domain-specific guidance:
+    
+    - **Guidance skills**: Pattern libraries with best practices for charts, typography, transitions, etc.
+    - **Example skills**: Complete working code references demonstrating specific animation patterns
+    
+    This keeps the base prompt lightweight while dynamically injecting only relevant expertise.
+  </Step>
+  
+  <Step title="Code generation">
+    Uses a one-shot prompt with base Remotion knowledge plus detected skills. All generated code follows these principles:
+    
+    - **Constants-first design**: All text, colors, and timing values declared as editable constants
+    - **Aesthetic defaults**: Professional visual polish, spacing, and animation feel
+    - **Crossfade patterns**: Smooth state transitions without layout jumps
+    - **Spring physics**: Natural, organic motion using Remotion's `spring()` function
+  </Step>
+  
+  <Step title="Live preview">
+    The response is cleaned, compiled in-browser using Babel, and rendered directly in the Remotion Player with all necessary APIs injected.
+  </Step>
+</Steps>
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Prompt-to-code generation" icon="wand-magic-sparkles">
+    Describe your animation in plain English and get production-ready Remotion code instantly.
+  </Card>
+  
+  <Card title="Conversational editing" icon="messages">
+    Refine your animations through natural language follow-up requests. The system maintains conversation context and applies targeted edits.
+  </Card>
+  
+  <Card title="Skills system" icon="brain">
+    8 specialized skills provide domain expertise for charts, typography, messaging UI, transitions, sequencing, spring physics, social media formats, and 3D scenes.
+  </Card>
+  
+  <Card title="Live preview" icon="play">
+    See your animations render in real-time with full Remotion Player controls. Adjust duration, FPS, and scrub through frames.
+  </Card>
+  
+  <Card title="Self-healing errors" icon="shield-check">
+    Automatic error correction for compilation errors and failed edits with up to 3 retry attempts.
+  </Card>
+  
+  <Card title="Image support" icon="image">
+    Attach images directly or paste them into prompts. The system generates code that references your visual assets.
+  </Card>
+</CardGroup>
+
+## What you can create
+
+The platform excels at creating:
+
+- **Kinetic typography**: Typewriter effects, word carousels, text highlights, animated titles
+- **Data visualizations**: Bar charts, pie charts, histograms, progress bars with animated entrances
+- **Chat/messaging UI**: WhatsApp-style bubbles, iMessage layouts, staggered message animations
+- **Social media content**: Instagram Stories, TikTok videos, YouTube intros with proper aspect ratios
+- **Logo animations**: Brand intros, loading screens, animated logos
+- **Abstract motion graphics**: Geometric patterns, particle systems, morphing shapes
+- **Product showcases**: Feature highlights, demo videos, explainer animations
+
+## Example prompt patterns
+
+Here are proven prompt patterns that work well:
+
+<CodeGroup>
+```text Typography
+Generate the text "Hello world" with world in yellow highlighting. 
+Black text, white background. The words should be shown next to each 
+other in the center of the screen.
+
+Animation: Let the words fade in from left to right and then highlight 
+"world" yellow. Mimic a typewriter effect for the text appearance with 
+a blinking cursor at the end of the text.
+```
+
+```text Data visualization
+An animated histogram with the gold price for the following data:
+{
+  "title": "Gold Price 2024",
+  "unit": "USD per troy ounce",
+  "data": [
+    { "month": "Jan", "price": 2039 },
+    { "month": "Feb", "price": 2024 },
+    { "month": "Mar", "price": 2160 }
+  ]
+}
+```
+
+```text Messaging UI
+WhatsApp-style chat bubbles that appear one by one with a bouncy 
+spring animation, alternating between sent and received messages.
+Use green for sent messages and gray for received messages. 
+Position them on left and right sides respectively.
+```
+
+```text Metric counters
+Three animated number counters showing Users (10,000), Revenue 
+($50,000), and Growth (127%) that count up from zero with staggered 
+timing. Show all metrics at the same time, use color #fde047.
+```
+</CodeGroup>
+
+## Get started
+
+<CardGroup cols={2}>
+  <Card title="Quick start" icon="rocket" href="/quickstart">
+    Get up and running in 5 minutes with your first AI-generated animation
+  </Card>
+  
+  <Card title="Installation" icon="download" href="/installation">
+    Complete installation guide with all dependencies and configuration
+  </Card>
+</CardGroup>
+
+<Note>
+  This project requires an OpenAI API key. The platform uses GPT-5.2 for code generation and skill detection.
+</Note>

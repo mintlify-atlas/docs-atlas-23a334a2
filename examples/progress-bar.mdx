@@ -1,0 +1,166 @@
+---
+title: Progress Bar
+description: Create an animated progress bar from 0 to 100% with smooth transitions
+---
+
+This snippet demonstrates how to create a smooth animated progress bar that fills from 0 to 100%, perfect for loading screens, process visualizations, or time-based indicators.
+
+## What This Snippet Demonstrates
+
+- Linear progress animations using `interpolate`
+- Smooth fade-in effects
+- Gradient fills for visual appeal
+- Real-time percentage display
+- Clamping values to prevent overflow
+
+## Complete Code
+
+```tsx
+import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate } from "remotion";
+
+export const MyAnimation = () => {
+  const frame = useCurrentFrame();
+  const { durationInFrames } = useVideoConfig();
+
+  const progress = interpolate(
+    frame,
+    [0, durationInFrames * 0.8],
+    [0, 100],
+    { extrapolateRight: "clamp" }
+  );
+
+  const opacity = interpolate(
+    frame,
+    [0, 20],
+    [0, 1],
+    { extrapolateRight: "clamp" }
+  );
+
+  return (
+    <AbsoluteFill
+      style={{
+        backgroundColor: "#1a1a1a",
+        justifyContent: "center",
+        alignItems: "center",
+        opacity,
+      }}
+    >
+      <div style={{ width: 600 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 16,
+          }}
+        >
+          <span
+            style={{
+              color: "#fff",
+              fontSize: 24,
+              fontFamily: "system-ui, sans-serif",
+            }}
+          >
+            Loading...
+          </span>
+          <span
+            style={{
+              color: "#10b981",
+              fontSize: 24,
+              fontWeight: "bold",
+              fontFamily: "system-ui, sans-serif",
+            }}
+          >
+            {Math.round(progress)}%
+          </span>
+        </div>
+        <div
+          style={{
+            width: "100%",
+            height: 24,
+            backgroundColor: "#333",
+            borderRadius: 12,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              width: `${progress}%`,
+              height: "100%",
+              background: "linear-gradient(90deg, #10b981, #34d399)",
+              borderRadius: 12,
+              transition: "width 0.1s ease-out",
+            }}
+          />
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+```
+
+## Key Concepts
+
+### Progress Interpolation
+
+The progress bar fills to 100% over 80% of the video duration:
+
+```tsx
+const progress = interpolate(
+  frame,
+  [0, durationInFrames * 0.8],
+  [0, 100],
+  { extrapolateRight: "clamp" }
+);
+```
+
+Using `extrapolateRight: "clamp"` ensures the progress never exceeds 100%, even in later frames.
+
+### Fade-In Effect
+
+The entire scene fades in over the first 20 frames:
+
+```tsx
+const opacity = interpolate(
+  frame,
+  [0, 20],
+  [0, 1],
+  { extrapolateRight: "clamp" }
+);
+```
+
+### Dynamic Width
+
+The progress bar width is controlled by the interpolated progress value:
+
+```tsx
+width: `${progress}%`
+```
+
+### Gradient Fill
+
+A horizontal gradient creates visual depth:
+
+```tsx
+background: "linear-gradient(90deg, #10b981, #34d399)"
+```
+
+## When to Use This Pattern
+
+- Loading screens and splash animations
+- Rendering progress indicators
+- Time-based process visualizations
+- Tutorial progress tracking
+- Skill level indicators
+- Download or upload progress displays
+- Achievement or goal completion animations
+
+## Customization Tips
+
+- Change the completion percentage by adjusting `durationInFrames * 0.8` (currently 80%)
+- Customize colors in the gradient to match your brand
+- Replace the linear interpolation with a spring for bounce effects
+- Add multiple progress bars to show parallel processes
+- Change the text from "Loading..." to match your use case
+- Adjust the bar height and width to fit different layouts
+- Add sound effects when the progress reaches certain milestones
+- Use `Easing` functions for non-linear progress (e.g., ease-in-out)

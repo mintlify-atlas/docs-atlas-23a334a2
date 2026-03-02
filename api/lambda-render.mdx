@@ -1,0 +1,134 @@
+---
+title: 'Lambda Render'
+description: 'Trigger video renders on AWS Lambda using Remotion'
+---
+
+## POST /api/lambda/render
+
+Triggers a video render job on AWS Lambda using Remotion's serverless rendering capabilities. This endpoint initiates the rendering process and returns information needed to track the render progress.
+
+<Warning>
+Before using this endpoint, ensure you have:
+- Deployed Remotion Lambda functions to AWS
+- Set up `REMOTION_AWS_ACCESS_KEY_ID` or `AWS_ACCESS_KEY_ID` in your environment
+- Set up `REMOTION_AWS_SECRET_ACCESS_KEY` or `AWS_SECRET_ACCESS_KEY` in your environment
+- Configured the Lambda function in `config.mjs` with appropriate RAM, DISK, TIMEOUT, and REGION settings
+</Warning>
+
+### Request Body
+
+<ParamField body="inputProps" type="object" required>
+  The input properties for the Remotion composition
+  
+  <ParamField body="inputProps.code" type="string" required>
+    The code/prompt that defines the motion graphics to generate
+  </ParamField>
+  
+  <ParamField body="inputProps.durationInFrames" type="number" required>
+    The duration of the video in frames
+  </ParamField>
+  
+  <ParamField body="inputProps.fps" type="number" required>
+    Frames per second for the video (e.g., 30 or 60)
+  </ParamField>
+</ParamField>
+
+### Response
+
+Returns a `RenderMediaOnLambdaOutput` object from Remotion Lambda with details about the initiated render job.
+
+<ResponseField name="renderId" type="string">
+  Unique identifier for this render job. Use this to check progress via the `/api/lambda/progress` endpoint.
+</ResponseField>
+
+<ResponseField name="bucketName" type="string">
+  The S3 bucket where the rendered video will be stored
+</ResponseField>
+
+<ResponseField name="cloudWatchLogs" type="string">
+  URL to CloudWatch logs for debugging the render job
+</ResponseField>
+
+<ResponseField name="folderInS3Console" type="string">
+  Direct link to the S3 folder containing render artifacts
+</ResponseField>
+
+### Configuration
+
+The endpoint uses settings from `config.mjs`:
+
+- **Region**: AWS region (default: `us-east-1`)
+- **RAM**: Memory allocated to Lambda function (default: 3009 MB)
+- **DISK**: Disk space for Lambda (default: 10240 MB)
+- **TIMEOUT**: Maximum execution time (default: 240 seconds)
+- **Codec**: Video codec (fixed to `h264`)
+- **Frames per Lambda**: Number of frames rendered per Lambda invocation (fixed to 60)
+
+### Example Request
+
+```bash
+curl -X POST https://your-domain.com/api/lambda/render \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inputProps": {
+      "code": "Create a rotating 3D cube with blue color",
+      "durationInFrames": 150,
+      "fps": 30
+    }
+  }'
+```
+
+```javascript
+const response = await fetch('/api/lambda/render', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    inputProps: {
+      code: 'Create a rotating 3D cube with blue color',
+      durationInFrames: 150,
+      fps: 30
+    }
+  })
+});
+
+const result = await response.json();
+console.log('Render ID:', result.renderId);
+console.log('Bucket:', result.bucketName);
+```
+
+### Example Response
+
+```json
+{
+  "renderId": "8h3k9d2f-1a2b-3c4d-5e6f-7g8h9i0j1k2l",
+  "bucketName": "remotionlambda-useast1-abcdefgh",
+  "cloudWatchLogs": "https://console.aws.amazon.com/cloudwatch/...",
+  "folderInS3Console": "https://s3.console.aws.amazon.com/s3/buckets/..."
+}
+```
+
+<Note>
+The render is asynchronous. After receiving the `renderId`, poll the `/api/lambda/progress` endpoint to track rendering progress and get the final video URL when complete.
+</Note>
+
+### Error Responses
+
+**Missing AWS Credentials**
+```json
+{
+  "error": "Set up Remotion Lambda to render videos. See the README.md for how to do so."
+}
+```
+
+**Missing Secret Access Key**
+```json
+{
+  "error": "The environment variable REMOTION_AWS_SECRET_ACCESS_KEY is missing. Add it to your .env file."
+}
+```
+
+### Related Endpoints
+
+- [Lambda Progress](/api/lambda-progress) - Check render status and get video URL

@@ -1,0 +1,239 @@
+---
+title: "Streaming Responses"
+description: "How streaming works for initial animation generation"
+---
+
+When generating a new animation (initial generation mode), the `/api/generate` endpoint uses **streaming responses** via Server-Sent Events (SSE) to provide real-time feedback as the code is generated.
+
+## When Streaming is Used
+
+Streaming is only used for **initial generation**:
+- When `isFollowUp` is `false` or not provided
+- When creating a new animation from scratch
+
+Follow-up edits return a standard JSON response (non-streaming).
+
+## Response Format
+
+The endpoint uses the Vercel AI SDK's `toUIMessageStreamResponse()` method, which returns a stream of Server-Sent Events.
+
+### Stream Structure
+
+```typescript
+// The endpoint wraps the AI SDK stream with a metadata event
+const result = streamText({
+  model: openai(modelName),
+  system: enhancedSystemPrompt,
+  messages: initialMessages,
+});
+
+const response = result.toUIMessageStreamResponse({ sendReasoning: true });
+```
+
+## Metadata Event
+
+Before the AI-generated code stream begins, the endpoint prepends a **metadata event** containing detected skills:
+
+```
+data: {"type":"metadata","skills":["chart","3d"]}
+
+```
+
+This allows clients to know which skills were detected before the code generation completes.
+
+### Metadata Event Structure
+
+```typescript
+{
+  type: "metadata",
+  skills: string[]  // Array of detected skill names
+}
+```
+
+## AI SDK Stream Events
+
+After the metadata event, the stream contains events from the Vercel AI SDK:
+
+### Text Delta Events
+
+As the code is generated token-by-token:
+
+```
+data: {"type":"text-delta","textDelta":"import"}
+
+data: {"type":"text-delta","textDelta":" {"}
+
+data: {"type":"text-delta","textDelta":" useCurrentFrame"}
+
+...
+```
+
+### Reasoning Events (Optional)
+
+If the model supports reasoning (like o1-mini), reasoning tokens are included when `sendReasoning: true`:
+
+```
+data: {"type":"reasoning-delta","reasoningDelta":"First, I need to..."}
+
+...
+```
+
+### Finish Event
+
+When generation completes:
+
+```
+data: {"type":"finish","finishReason":"stop"}
+
+```
+
+## Client-Side Consumption
+
+Here's how to consume the streaming response in the browser:
+
+### Using Fetch API
+
+```typescript
+const response = await fetch('/api/generate', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    prompt: 'Create a bouncing ball animation',
+    model: 'gpt-5.2'
+  })
+});
+
+const reader = response.body?.getReader();
+const decoder = new TextDecoder();
+let detectedSkills: string[] = [];
+let generatedCode = '';
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  
+  const chunk = decoder.decode(value);
+  const lines = chunk.split('\n');
+  
+  for (const line of lines) {
+    if (line.startsWith('data: ')) {
+      const data = JSON.parse(line.slice(6));
+      
+      if (data.type === 'metadata') {
+        detectedSkills = data.skills;
+        console.log('Detected skills:', detectedSkills);
+      } else if (data.type === 'text-delta') {
+        generatedCode += data.textDelta;
+        // Update UI with partial code
+      } else if (data.type === 'finish') {
+        console.log('Generation complete');
+      }
+    }
+  }
+}
+```
+
+### Using Vercel AI SDK (React)
+
+The Vercel AI SDK provides React hooks that handle streaming automatically:
+
+```typescript
+import { useChat } from 'ai/react';
+
+function AnimationGenerator() {
+  const { messages, append, isLoading } = useChat({
+    api: '/api/generate',
+  });
+  
+  const handleGenerate = async () => {
+    await append({
+      role: 'user',
+      content: 'Create a countdown timer from 10 to 0'
+    });
+  };
+  
+  return (
+    <div>
+      <button onClick={handleGenerate} disabled={isLoading}>
+        Generate
+      </button>
+      {messages.map((m, i) => (
+        <div key={i}>
+          {m.role === 'assistant' && (
+            <pre><code>{m.content}</code></pre>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Event Sequence Example
+
+Here's a complete example of the event sequence for a simple animation:
+
+```
+data: {"type":"metadata","skills":[]}
+
+data: {"type":"text-delta","textDelta":"import"}
+
+data: {"type":"text-delta","textDelta":" {"}
+
+data: {"type":"text-delta","textDelta":" useCurrentFrame"}
+
+data: {"type":"text-delta","textDelta":","}
+
+data: {"type":"text-delta","textDelta":" AbsoluteFill"}
+
+data: {"type":"text-delta","textDelta":" }"}
+
+data: {"type":"text-delta","textDelta":" from"}
+
+data: {"type":"text-delta","textDelta":" \"remotion\""}
+
+data: {"type":"text-delta","textDelta":";"}
+
+data: {"type":"text-delta","textDelta":"\n\n"}
+
+data: {"type":"text-delta","textDelta":"export"}
+
+data: {"type":"text-delta","textDelta":" const"}
+
+...
+
+data: {"type":"finish","finishReason":"stop"}
+
+```
+
+## Benefits of Streaming
+
+1. **Real-time Feedback**: Users see code appearing as it's generated
+2. **Better UX**: No waiting for complete response before showing anything
+3. **Early Errors**: Syntax errors can be detected before generation completes
+4. **Progress Indication**: Natural loading state without custom spinners
+
+## Why Follow-ups Don't Stream
+
+Follow-up edits use non-streaming responses because:
+- Edit operations (find/replace) must be atomic
+- Structured output is required (edits array or full code)
+- Faster response time (no token-by-token overhead)
+- Deterministic result needed before applying changes
+
+## Handling Errors in Streams
+
+If an error occurs during streaming, the stream will close and the client should handle the disconnection:
+
+```typescript
+try {
+  // Stream consumption code
+} catch (error) {
+  if (error instanceof TypeError && error.message.includes('network')) {
+    console.error('Network error during streaming');
+  }
+  // Handle error
+}
+```
+
+For validation errors (invalid prompts), the endpoint returns a standard error response before streaming begins, so clients should check the response status before attempting to read the stream.

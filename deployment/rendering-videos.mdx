@@ -1,0 +1,302 @@
+---
+title: Rendering Videos
+description: Learn how to render videos using AWS Lambda through the API endpoints
+---
+
+Once your Lambda infrastructure is deployed, you can render videos by making API requests to the Lambda endpoints.
+
+## Render Endpoint
+
+The render endpoint initiates a new video render job on AWS Lambda.
+
+### Endpoint
+
+```
+POST /api/lambda/render
+```
+
+### Implementation
+
+The render endpoint is implemented in `src/app/api/lambda/render/route.ts`:
+
+```typescript
+import {
+  renderMediaOnLambda,
+  speculateFunctionName,
+} from "@remotion/lambda/client";
+
+export const POST = executeApi<RenderMediaOnLambdaOutput, typeof RenderRequest>(
+  RenderRequest,
+  async (req, body) => {
+    const result = await renderMediaOnLambda({
+      codec: "h264",
+      functionName: speculateFunctionName({
+        diskSizeInMb: DISK,
+        memorySizeInMb: RAM,
+        timeoutInSeconds: TIMEOUT,
+      }),
+      region: REGION,
+      serveUrl: SITE_NAME,
+      composition: COMP_NAME,
+      inputProps: body.inputProps,
+      framesPerLambda: 60,
+      downloadBehavior: {
+        type: "download",
+        fileName: "video.mp4",
+      },
+    });
+
+    return result;
+  },
+);
+```
+
+### Request Body
+
+The request expects a JSON body with your composition's input properties:
+
+```json
+{
+  "inputProps": {
+    // Your composition-specific props here
+  }
+}
+```
+
+### Response
+
+The endpoint returns a `RenderMediaOnLambdaOutput` object containing:
+
+- `renderId`: Unique identifier for this render job
+- `bucketName`: S3 bucket where the video will be stored
+- Additional metadata about the render job
+
+### Render Configuration
+
+The render uses these settings:
+
+- **Codec**: H.264 (MP4 format)
+- **Frames per Lambda**: 60 frames per function invocation for parallel rendering
+- **Download Behavior**: Videos are named `video.mp4` when downloaded
+- **Function Name**: Automatically determined based on your Lambda configuration (RAM, disk, timeout)
+
+## Progress Endpoint
+
+Monitor the status of your render job using the progress endpoint.
+
+### Endpoint
+
+```
+POST /api/lambda/progress
+```
+
+### Implementation
+
+The progress endpoint tracks render job status in `src/app/api/lambda/progress/route.ts`:
+
+```typescript
+import {
+  getRenderProgress,
+  speculateFunctionName,
+} from "@remotion/lambda/client";
+
+export const POST = executeApi<ProgressResponse, typeof ProgressRequest>(
+  ProgressRequest,
+  async (req, body) => {
+    const renderProgress = await getRenderProgress({
+      bucketName: body.bucketName,
+      functionName: speculateFunctionName({
+        diskSizeInMb: DISK,
+        memorySizeInMb: RAM,
+        timeoutInSeconds: TIMEOUT,
+      }),
+      region: REGION,
+      renderId: body.id,
+    });
+
+    if (renderProgress.fatalErrorEncountered) {
+      return {
+        type: "error",
+        message: renderProgress.errors[0].message,
+      };
+    }
+
+    if (renderProgress.done) {
+      return {
+        type: "done",
+        url: renderProgress.outputFile,
+        size: renderProgress.outputSizeInBytes,
+      };
+    }
+
+    return {
+      type: "progress",
+      progress: Math.max(0.03, renderProgress.overallProgress),
+    };
+  },
+);
+```
+
+### Request Body
+
+```json
+{
+  "bucketName": "remotionlambda-useast1-xxxxxx",
+  "id": "render-id-from-render-response"
+}
+```
+
+### Response Types
+
+The progress endpoint returns one of three response types:
+
+#### In Progress
+
+```json
+{
+  "type": "progress",
+  "progress": 0.45
+}
+```
+
+- `progress`: A number between 0 and 1 (minimum 0.03 to show initial progress)
+
+#### Complete
+
+```json
+{
+  "type": "done",
+  "url": "https://s3.amazonaws.com/.../video.mp4",
+  "size": 1234567
+}
+```
+
+- `url`: Direct URL to the rendered video file
+- `size`: File size in bytes
+
+#### Error
+
+```json
+{
+  "type": "error",
+  "message": "Error description"
+}
+```
+
+- `message`: Description of what went wrong during rendering
+
+## Complete Workflow
+
+Here's a complete example of rendering a video and checking its progress:
+
+<Steps>
+  <Step title="Initiate Render">
+    Send a POST request to start rendering:
+    
+    ```javascript
+    const renderResponse = await fetch('/api/lambda/render', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        inputProps: {
+          // Your composition props
+        }
+      })
+    });
+    
+    const { renderId, bucketName } = await renderResponse.json();
+    ```
+  </Step>
+
+  <Step title="Poll for Progress">
+    Periodically check the render status:
+    
+    ```javascript
+    const checkProgress = async () => {
+      const progressResponse = await fetch('/api/lambda/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: renderId,
+          bucketName: bucketName
+        })
+      });
+      
+      const result = await progressResponse.json();
+      
+      if (result.type === 'done') {
+        console.log('Video ready:', result.url);
+        console.log('Size:', result.size, 'bytes');
+      } else if (result.type === 'error') {
+        console.error('Render failed:', result.message);
+      } else {
+        console.log('Progress:', Math.round(result.progress * 100) + '%');
+        setTimeout(checkProgress, 1000); // Check again in 1 second
+      }
+    };
+    
+    checkProgress();
+    ```
+  </Step>
+
+  <Step title="Download Video">
+    Once complete, use the returned URL to download or display the video:
+    
+    ```javascript
+    // Direct link for download
+    window.location.href = result.url;
+    
+    // Or embed in video player
+    videoElement.src = result.url;
+    ```
+  </Step>
+</Steps>
+
+## Error Handling
+
+### Missing Credentials
+
+If AWS credentials are not configured, you'll receive:
+
+```json
+{
+  "error": "Set up Remotion Lambda to render videos. See the README.md for how to do so."
+}
+```
+
+Ensure your environment variables are set:
+- `REMOTION_AWS_ACCESS_KEY_ID` or `AWS_ACCESS_KEY_ID`
+- `REMOTION_AWS_SECRET_ACCESS_KEY` or `AWS_SECRET_ACCESS_KEY`
+
+### Render Failures
+
+Common render failures include:
+- **Timeout**: Render exceeded 240 seconds (increase `TIMEOUT` in `config.mjs`)
+- **Out of Memory**: Increase `RAM` in `config.mjs`
+- **Invalid Props**: Check that your `inputProps` match the composition's expected schema
+
+## Performance Optimization
+
+### Parallel Rendering
+
+The `framesPerLambda: 60` setting determines how work is distributed:
+- **Lower values** (e.g., 30): More parallel Lambda invocations, faster for complex scenes
+- **Higher values** (e.g., 120): Fewer invocations, lower cost but slower
+
+### Region Selection
+
+Choose a region close to your users for faster uploads and downloads. Configure in `config.mjs`:
+
+```javascript
+export const REGION = "us-east-1"; // Change to your preferred region
+```
+
+## Cost Considerations
+
+Lambda rendering costs depend on:
+- Number of frames in your video
+- `framesPerLambda` setting (determines number of invocations)
+- Lambda function configuration (RAM/disk/timeout)
+- Region selected
+
+See the [Configuration](/deployment/configuration) guide for optimizing resource allocation.

@@ -1,0 +1,316 @@
+---
+title: Working with Images
+description: How to reference and animate images in your Remotion motion graphics using URL references
+---
+
+Remotion Prompt to Motion Graphics supports images in animations through URL references. This guide explains how to include images in your prompts and work with them in the generated code.
+
+## Image Usage Overview
+
+<Warning>
+Direct image uploads are **not supported**. You must reference images via publicly accessible URLs.
+</Warning>
+
+The generator uses Remotion's `<Img>` component to display images. When you reference an image URL in your prompt, the generated code will include the appropriate import and component structure.
+
+## Referencing Images in Prompts
+
+Include the full image URL directly in your prompt. The generator will extract it and use it in the code.
+
+### Basic Image Reference
+
+```text Example Prompt
+Create a DVD screensaver animation of this image https://example.com/logo.png bouncing around the screen
+```
+
+This will generate code similar to:
+
+```tsx Generated Code
+import { useCurrentFrame, useVideoConfig, Img } from 'remotion';
+
+export const DvdScreensaver = () => {
+  const frame = useCurrentFrame();
+  const { width, height } = useVideoConfig();
+  
+  // Editable constants
+  const IMAGE_URL = "https://example.com/logo.png";
+  const IMAGE_SIZE = 120;
+  const SPEED = 3;
+  
+  // Animation logic...
+  
+  return (
+    <AbsoluteFill style={{ backgroundColor: '#000000' }}>
+      <Img 
+        src={IMAGE_URL}
+        style={{
+          width: IMAGE_SIZE,
+          height: IMAGE_SIZE,
+          position: 'absolute',
+          left: x,
+          top: y
+        }}
+      />
+    </AbsoluteFill>
+  );
+};
+```
+
+<Note>
+Notice how the URL is extracted into an editable constant `IMAGE_URL` at the top of the component. This follows the constants-first design principle.
+</Note>
+
+## Image Hosting Requirements
+
+For images to work in your Remotion animations, they must be:
+
+1. **Publicly accessible** - The URL must return the image without authentication
+2. **CORS-enabled** - The server must allow cross-origin requests
+3. **Stable** - The URL should remain valid (avoid temporary upload services)
+
+### Recommended Image Hosts
+
+- **GitHub** - Raw content URLs from public repos (`https://raw.githubusercontent.com/...`)
+- **Cloudinary** - Image CDN with transformation support
+- **Imgur** - Direct image links (right-click → "Open image in new tab")
+- **Your own CDN** - Any server with CORS headers enabled
+
+<Warning>
+Avoid using URLs that redirect or require cookies/authentication. These will fail to load in the Remotion player.
+</Warning>
+
+## Common Image Animation Patterns
+
+### Product Showcase
+
+```text Prompt
+Create a product showcase animation: product image https://example.com/product.png scales in from 0 to full size with spring physics, centered on screen with white background
+```
+
+### Floating Logo
+
+```text Prompt  
+Animate this logo https://example.com/logo.svg floating up and down smoothly, centered horizontally, with a subtle rotation
+```
+
+### Image Gallery Slideshow
+
+```text Prompt
+Create a slideshow transitioning between these 3 images:
+- https://example.com/photo1.jpg
+- https://example.com/photo2.jpg  
+- https://example.com/photo3.jpg
+Use crossfade transitions, 90 frames per image
+```
+
+### Profile Avatar Animation
+
+```text Prompt
+Chat message animation with sender avatar https://example.com/avatar.png on the left, followed by message bubble saying "Hello!" with spring entrance
+```
+
+## Customizing Image Display
+
+After generation, you can customize how images appear by editing the constants and styles in the Monaco editor.
+
+### Change Image URL
+
+Find the constant declaration:
+
+```tsx
+const IMAGE_URL = "https://example.com/old-image.png";
+```
+
+Replace with your new URL:
+
+```tsx
+const IMAGE_URL = "https://example.com/new-image.png";
+```
+
+The preview updates automatically.
+
+### Adjust Image Size
+
+Modify the size constants:
+
+```tsx
+const IMAGE_WIDTH = 400;  // Change from 300
+const IMAGE_HEIGHT = 300; // Change from 225
+```
+
+Or use responsive sizing:
+
+```tsx
+const IMAGE_WIDTH = Math.round(width * 0.5); // 50% of canvas width
+```
+
+### Add Image Effects
+
+Edit the inline styles on the `<Img>` component:
+
+```tsx
+<Img
+  src={IMAGE_URL}
+  style={{
+    width: IMAGE_WIDTH,
+    height: IMAGE_HEIGHT,
+    borderRadius: 20,           // Rounded corners
+    opacity: fadeOpacity,        // Animated opacity
+    transform: `scale(${scale})`, // Animated scaling
+    boxShadow: '0 10px 40px rgba(0,0,0,0.3)', // Drop shadow
+    filter: 'brightness(1.1)',   // Brightness adjustment
+  }}
+/>
+```
+
+## Working with Multiple Images
+
+You can reference multiple images in a single prompt. The generator will create separate constants for each:
+
+```text Prompt
+Create a before/after comparison: 
+- Before image: https://example.com/before.jpg (left side)
+- After image: https://example.com/after.jpg (right side)
+With a sliding divider revealing the after image
+```
+
+Generated constants:
+
+```tsx
+const IMAGE_BEFORE = "https://example.com/before.jpg";
+const IMAGE_AFTER = "https://example.com/after.jpg";
+const DIVIDER_COLOR = "#FFFFFF";
+```
+
+## Image Format Support
+
+Remotion's `<Img>` component supports standard web image formats:
+
+- **PNG** - Best for logos, graphics with transparency
+- **JPG/JPEG** - Best for photos, complex images
+- **SVG** - Best for scalable vector graphics (use `<Img>` not `<svg>`)
+- **WebP** - Modern format with good compression
+- **GIF** - Static GIF rendering (first frame only, not animated)
+
+<Tip>
+For best quality, use PNG for graphics with transparency and JPG for photographic content. SVG works great for logos that need to scale.
+</Tip>
+
+## Troubleshooting Image Issues
+
+### Image Not Displaying
+
+1. **Check the URL** - Paste it in a browser to verify it loads
+2. **Check CORS** - Open browser DevTools → Network tab, look for CORS errors
+3. **Use direct URLs** - Avoid page URLs (like `imgur.com/abc123`), use direct image URLs (like `i.imgur.com/abc123.png`)
+
+### CORS Errors
+
+If you see `CORS policy: No 'Access-Control-Allow-Origin' header` in the console:
+
+<Warning>
+The image host is blocking cross-origin requests. Solutions:
+
+1. Upload the image to a CORS-enabled host (GitHub, Cloudinary, Imgur)
+2. Use a CORS proxy service (not recommended for production)
+3. Host the image on your own server with proper CORS headers
+</Warning>
+
+### Slow Loading
+
+Large image files can slow down the Remotion preview:
+
+- **Optimize images** - Compress before uploading (use tools like TinyPNG)
+- **Use appropriate dimensions** - Don't use 4K images for small thumbnails
+- **Consider WebP** - Modern format with better compression than JPG
+
+## Advanced: Animated Image Properties
+
+You can animate image properties using Remotion's `interpolate()` and `spring()` functions:
+
+### Fade In Effect
+
+```tsx
+const opacity = interpolate(
+  frame,
+  [0, 30],
+  [0, 1],
+  { extrapolateRight: 'clamp' }
+);
+
+<Img 
+  src={IMAGE_URL} 
+  style={{ opacity }}
+/>
+```
+
+### Scale Bounce
+
+```tsx
+const scale = spring({
+  frame,
+  fps,
+  config: { damping: 12, stiffness: 100 }
+});
+
+<Img
+  src={IMAGE_URL}
+  style={{ transform: `scale(${scale})` }}
+/>
+```
+
+### Position Animation
+
+```tsx
+const x = interpolate(
+  frame,
+  [0, 60],
+  [-200, width / 2],
+  { extrapolateRight: 'clamp' }
+);
+
+<Img
+  src={IMAGE_URL}
+  style={{ 
+    position: 'absolute',
+    left: x,
+    transform: 'translateX(-50%)'
+  }}
+/>
+```
+
+<Tip>
+Describe these animation patterns in your initial prompt to have them generated automatically: "image slides in from left", "logo bounces in with spring physics", "photo fades in over 30 frames".
+</Tip>
+
+## Example: Complete Image Animation
+
+Here's a complete prompt demonstrating best practices:
+
+```text Example Prompt
+Create a product reveal animation:
+
+1. Dark gradient background (navy to black)
+2. Product image https://example.com/headphones.png starts at 50% size, centered
+3. Image scales up to 100% with elastic spring bounce (frames 0-60)
+4. Product name "Elite Headphones" fades in below image (frames 40-70)
+5. Price "$299" appears at bottom with slide-up effect (frames 70-100)
+
+Use white text with subtle drop shadows.
+```
+
+This prompt includes:
+- ✅ Specific image URL
+- ✅ Animation timing details
+- ✅ Motion style (elastic spring, fade, slide)
+- ✅ Layout description (centered, positions)
+- ✅ Visual styling (colors, shadows)
+
+## Summary
+
+- Reference images via **publicly accessible URLs**
+- Include URLs directly in your prompt
+- Image URLs become editable constants in generated code
+- Use CORS-enabled hosts (GitHub, Cloudinary, Imgur)
+- Optimize image sizes for faster preview loading
+- Describe animation effects in your prompt for automatic generation

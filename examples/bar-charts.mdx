@@ -1,0 +1,146 @@
+---
+title: Animated Bar Chart
+description: Create animated histogram visualizations with growing bars
+---
+
+<Card title="Bar Chart" icon="bar-chart-3" color="#a5b4fc">
+  Animated histogram with bars that grow to display data over time
+</Card>
+
+## The Prompt
+
+```
+An animated histogram with the gold price for the following data:
+{
+  "title": "Gold Price 2024",
+  "unit": "USD per troy ounce",
+  "data": [
+    { "month": "Jan", "price": 2039 },
+    { "month": "Feb", "price": 2024 },
+    { "month": "Mar", "price": 2160 },
+    { "month": "Apr", "price": 2330 },
+    { "month": "May", "price": 2327 },
+    { "month": "Jun", "price": 2339 },
+    { "month": "Jul", "price": 2426 },
+    { "month": "Aug", "price": 2503 },
+    { "month": "Sep", "price": 2634 },
+    { "month": "Oct", "price": 2735 },
+    { "month": "Nov", "price": 2672 },
+    { "month": "Dec", "price": 2650 }
+  ]
+}
+```
+
+## What This Generates
+
+This prompt creates a professional animated bar chart with:
+
+- A title ("Gold Price 2024") displayed prominently
+- Unit label ("USD per troy ounce") for clarity
+- 12 bars representing monthly data
+- Bars that animate and grow to their final heights
+- Month labels on the x-axis
+- Price values corresponding to each bar
+- Clean, data-driven visualization
+
+## Key Features
+
+<AccordionGroup>
+  <Accordion title="Structured Data Input">
+    Uses JSON format to clearly define all data points, making it easy to swap in your own datasets.
+  </Accordion>
+  
+  <Accordion title="Growing Bar Animation">
+    Bars animate from bottom to top, creating an engaging reveal of the data that holds viewer attention.
+  </Accordion>
+  
+  <Accordion title="Complete Labeling">
+    Includes title, units, axis labels, and data values for a professional, publication-ready chart.
+  </Accordion>
+  
+  <Accordion title="Time-Series Display">
+    Perfect for showing data that changes over time (months, quarters, years, etc.).
+  </Accordion>
+</AccordionGroup>
+
+## Customization Tips
+
+### Use Your Own Data
+Replace the JSON with your dataset:
+```
+An animated histogram with quarterly sales data:
+{
+  "title": "Q1-Q4 Revenue 2024",
+  "unit": "USD (millions)",
+  "data": [
+    { "quarter": "Q1", "revenue": 12.5 },
+    { "quarter": "Q2", "revenue": 15.2 },
+    { "quarter": "Q3", "revenue": 18.7 },
+    { "quarter": "Q4", "revenue": 22.1 }
+  ]
+}
+```
+
+### Change Colors
+- "Use blue bars" or "Use gradient from green to red"
+- "Highlight the highest bar in gold"
+- "Use company brand color #3b82f6 for all bars"
+
+### Modify Animation Style
+- "Bars appear one by one from left to right"
+- "All bars grow simultaneously"
+- "Bars bounce slightly when reaching final height"
+
+### Adjust Chart Style
+- "Show values on top of each bar"
+- "Include a grid in the background"
+- "Add a legend"
+- "Use rounded corners for bars"
+
+### Different Data Categories
+The same structure works for any categorical data:
+- Product sales by category
+- Website traffic by source
+- Survey responses by option
+- App downloads by platform
+- Temperature by city
+
+## Data Format Guidelines
+
+<Steps>
+  <Step title="Define the title">
+    Choose a clear, descriptive title for your chart that explains what data is being shown.
+  </Step>
+  
+  <Step title="Specify units">
+    Include the unit of measurement (dollars, percentages, counts, etc.) for clarity.
+  </Step>
+  
+  <Step title="Structure your data">
+    Use JSON array format with consistent key names for labels and values.
+  </Step>
+  
+  <Step title="Keep it concise">
+    For best visibility, use 4-12 data points. Too many bars become hard to read.
+  </Step>
+</Steps>
+
+## Use Cases
+
+- Financial reports and earnings presentations
+- Sales performance tracking
+- Marketing analytics dashboards
+- Scientific data visualization
+- Survey results presentation
+- Website analytics summaries
+- Product comparison charts
+- Historical trend analysis
+- Educational statistics
+
+<Tip>
+For monthly data spanning a full year, abbreviate month names (Jan, Feb, Mar) to keep labels compact and readable.
+</Tip>
+
+<Info>
+The JSON structure makes it easy to export data directly from spreadsheets or databases and paste it into your prompt.
+</Info>

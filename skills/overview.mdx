@@ -1,0 +1,144 @@
+---
+title: Skills System Overview
+description: Understanding how Remotion Prompt to Motion Graphics uses AI-powered skills to generate professional animations
+---
+
+The Skills System is the core intelligence layer that helps generate high-quality Remotion code. It consists of two complementary types of skills that work together to produce professional motion graphics.
+
+## Two Types of Skills
+
+### Guidance Skills
+
+Guidance skills contain **patterns, rules, and best practices** for specific animation domains. They teach the AI:
+- What NOT to do (anti-patterns)
+- What TO do (correct implementations)
+- Common pitfalls and how to avoid them
+- Performance and visual quality guidelines
+
+**Available Guidance Skills:**
+- [Charts](/skills/charts) - Data visualization and graph animations
+- [Typography](/skills/typography) - Kinetic text and typewriter effects
+- [Messaging](/skills/messaging) - Chat interfaces and conversation UIs
+- [Transitions](/skills/transitions) - Scene changes and smooth transitions
+- [Sequencing](/skills/sequencing) - Timing control and choreography
+- [Spring Physics](/skills/spring-physics) - Organic motion and bounce effects
+- [Social Media](/skills/social-media) - Platform-specific format optimization
+- [3D](/skills/3d) - Three.js integration and spatial animations
+
+### Example Skills
+
+Example skills provide **complete working code** that can be referenced or adapted. They show:
+- Full component implementations
+- Real-world use cases
+- Integration patterns
+- Production-ready examples
+
+**Available Example Skills:**
+- `example-histogram` - Animated bar chart with spring animations
+- `example-progress-bar` - Loading bar animation from 0 to 100%
+- `example-text-rotation` - Rotating words with fade/blur transitions
+- `example-falling-spheres` - 3D bouncing spheres with physics
+- `example-animated-shapes` - Bouncing/rotating SVG shapes
+- `example-lottie` - Loading and displaying Lottie animations
+- `example-gold-price-chart` - Bar chart with Y-axis labels and monthly data
+- `example-typewriter-highlight` - Typewriter effect with cursor and highlighting
+- `example-word-carousel` - Rotating words with crossfade transitions
+
+## When Each Type is Used
+
+<CardGroup cols={2}>
+  <Card title="Guidance Skills" icon="book">
+    Applied when generating **new code** from scratch based on user prompts. They ensure the generated code follows best practices and avoids common mistakes.
+    
+    **Example prompt:** "Create a bar chart showing sales data"
+    
+    **Skills applied:** `charts`, `sequencing`, `spring-physics`
+  </Card>
+  
+  <Card title="Example Skills" icon="code">
+    Referenced when the prompt closely matches an **existing example**. The AI can adapt the working code to the user's specific needs.
+    
+    **Example prompt:** "Show a histogram with animation"
+    
+    **Skill referenced:** `example-histogram`
+  </Card>
+</CardGroup>
+
+## How Skills Are Selected
+
+<Note>
+  Skills are **automatically detected** from your prompt using AI classification. You don't need to manually specify which skills to use.
+</Note>
+
+The system analyzes your prompt and matches it against skill tags and descriptions:
+
+```typescript
+// Example: "Create a WhatsApp conversation with 3 messages"
+// Detected skills:
+[
+  "messaging",      // Chat interface patterns
+  "sequencing",     // Staggered message entrances
+  "spring-physics"  // Bounce effects on bubbles
+]
+```
+
+<Tip>
+  Multiple skills can be combined in a single generation. For example, a social media video might use `social-media`, `typography`, `transitions`, and `spring-physics` together.
+</Tip>
+
+## Skill Impact Levels
+
+<AccordionGroup>
+  <Accordion title="HIGH Impact" icon="bolt">
+    These skills significantly improve code quality and prevent common bugs:
+    - Charts
+    - Typography
+    - Messaging
+    - Transitions
+    - Sequencing
+    - Spring Physics
+  </Accordion>
+  
+  <Accordion title="MEDIUM Impact" icon="gauge">
+    These skills provide optimization and platform-specific enhancements:
+    - Social Media
+    - 3D
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Steps>
+  <Step title="Be Specific in Prompts">
+    Mention key terms that trigger relevant skills:
+    - "bar chart" → triggers `charts` skill
+    - "WhatsApp" → triggers `messaging` skill
+    - "Instagram story" → triggers `social-media` skill
+  </Step>
+  
+  <Step title="Combine Skills Naturally">
+    The system handles multiple skills automatically:
+    
+    "Create a TikTok video showing a typing effect with the word 'Success' highlighted"
+    
+    **Detected:** `social-media`, `typography`, `spring-physics`
+  </Step>
+  
+  <Step title="Review Generated Code">
+    While skills ensure best practices, always review the output and iterate with follow-up prompts if needed.
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={3}>
+  <Card title="Charts" icon="chart-bar" href="/skills/charts">
+    Learn chart animation patterns
+  </Card>
+  <Card title="Typography" icon="font" href="/skills/typography">
+    Master text animations
+  </Card>
+  <Card title="3D" icon="cube" href="/skills/3d">
+    Explore 3D capabilities
+  </Card>
+</CardGroup>

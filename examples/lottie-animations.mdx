@@ -1,0 +1,196 @@
+---
+title: Lottie Animations
+description: Integrate Lottie animations from LottieFiles with spring entrance effects
+---
+
+This snippet demonstrates how to integrate Lottie animations into your Remotion project using the `@remotion/lottie` package, complete with loading states and entrance animations.
+
+## What This Snippet Demonstrates
+
+- Loading Lottie JSON files from external URLs
+- Using the `@remotion/lottie` package
+- Handling loading states with React hooks
+- Combining Lottie with spring animations
+- Scale and fade entrance effects
+- Attribution and credits display
+
+## Complete Code
+
+```tsx
+import { AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion";
+import { Lottie } from "@remotion/lottie";
+import { useState, useEffect } from "react";
+
+export const MyAnimation = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const [animationData, setAnimationData] = useState(null);
+
+  useEffect(() => {
+    fetch("https://assets-v2.lottiefiles.com/a/73ecc94a-4ccb-4018-a710-835b9eaffeaf/OwGeQT8PCr.json")
+      .then((res) => res.json())
+      .then((data) => setAnimationData(data))
+      .catch((err) => console.error("Failed to load Lottie:", err));
+  }, []);
+
+  const entrance = spring({
+    frame,
+    fps,
+    config: { damping: 15, stiffness: 100 },
+  });
+
+  const scale = interpolate(entrance, [0, 1], [0.5, 1]);
+  const opacity = interpolate(entrance, [0, 1], [0, 1]);
+
+  if (!animationData) {
+    return (
+      <AbsoluteFill
+        style={{
+          backgroundColor: "#000000",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <div style={{ color: "#94a3b8", fontSize: 24, fontFamily: "system-ui" }}>
+          Loading animation...
+        </div>
+      </AbsoluteFill>
+    );
+  }
+
+  return (
+    <AbsoluteFill
+      style={{
+        backgroundColor: "#000000",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <div
+        style={{
+          transform: `scale(${scale})`,
+          opacity,
+        }}
+      >
+        <Lottie
+          animationData={animationData}
+          style={{ width: 400, height: 400 }}
+        />
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          bottom: 60,
+          color: "#e2e8f0",
+          fontSize: 24,
+          fontFamily: "system-ui",
+          opacity,
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontWeight: "bold", marginBottom: 4 }}>Glowing Fish Loader</div>
+        <div style={{ fontSize: 16, color: "#94a3b8" }}>by Mau Ali on LottieFiles</div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+```
+
+## Key Concepts
+
+### Loading Lottie Data
+
+Use React hooks to fetch and store the Lottie JSON data:
+
+```tsx
+const [animationData, setAnimationData] = useState(null);
+
+useEffect(() => {
+  fetch("https://assets-v2.lottiefiles.com/...")
+    .then((res) => res.json())
+    .then((data) => setAnimationData(data))
+    .catch((err) => console.error("Failed to load Lottie:", err));
+}, []);
+```
+
+### Loading State
+
+Display a loading message while the animation data is being fetched:
+
+```tsx
+if (!animationData) {
+  return (
+    <AbsoluteFill>
+      <div>Loading animation...</div>
+    </AbsoluteFill>
+  );
+}
+```
+
+### Entrance Animation
+
+Combine spring animation with interpolation for smooth entrance:
+
+```tsx
+const entrance = spring({ frame, fps, config: { damping: 15, stiffness: 100 } });
+const scale = interpolate(entrance, [0, 1], [0.5, 1]);
+const opacity = interpolate(entrance, [0, 1], [0, 1]);
+```
+
+### Rendering Lottie
+
+The `Lottie` component handles playback automatically:
+
+```tsx
+<Lottie
+  animationData={animationData}
+  style={{ width: 400, height: 400 }}
+/>
+```
+
+## When to Use This Pattern
+
+- Adding professional animations without creating them from scratch
+- Using pre-made loading animations and loaders
+- Incorporating brand mascots or characters
+- Creating icon animations (success, error, warning states)
+- Educational content with illustrated characters
+- Product demos with animated UI elements
+- Social media content with trendy animations
+
+## Finding Lottie Animations
+
+You can find thousands of free and premium Lottie animations at:
+
+- [LottieFiles](https://lottiefiles.com/) - Browse and download animations
+- [Lottie Editor](https://edit.lottiefiles.com/) - Customize colors and properties
+- [Lordicon](https://lordicon.com/) - Icon-focused Lottie animations
+
+## Customization Tips
+
+- Replace the fetch URL with any Lottie JSON URL from LottieFiles
+- Download the JSON file locally and import it directly to avoid network requests
+- Adjust the `scale` interpolation range for different entrance effects
+- Modify spring `damping` and `stiffness` for different animation feels
+- Add multiple Lottie animations to create complex scenes
+- Use the Lottie `playbackRate` prop to speed up or slow down animations
+- Combine with other Remotion animations for layered effects
+
+## Local Lottie Files
+
+For better performance and reliability, download the Lottie file and import it directly:
+
+```tsx
+import animationData from "./animations/fish-loader.json";
+
+export const MyAnimation = () => {
+  // No need for useState or useEffect
+  return (
+    <AbsoluteFill>
+      <Lottie animationData={animationData} style={{ width: 400, height: 400 }} />
+    </AbsoluteFill>
+  );
+};
+```
+
+This approach eliminates loading states and works offline.
