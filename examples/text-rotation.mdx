@@ -1,0 +1,148 @@
+---
+title: 'Text Rotation'
+description: 'Rotating words with dissolve, blur, and scale effects'
+---
+
+## Overview
+
+This code snippet creates a text rotation animation where words fade in, hold, then dissolve out with blur and scale effects. Each word cycles through smoothly, creating an elegant presentation for multi-message animations.
+
+## Complete Code
+
+```tsx
+import { useCurrentFrame, AbsoluteFill, interpolate } from "remotion";
+
+export const MyAnimation = () => {
+  const frame = useCurrentFrame();
+
+  // Text content - easily customizable
+  const WORDS = ["This is a", "Text rotation example", "using Remotion!"];
+
+  // Animation timing
+  const WORD_DURATION = 60; // frames per word
+  const FADE_IN_DURATION = 15;
+  const FADE_OUT_START = 45;
+
+  // Visual styling
+  const FONT_SIZE = 120;
+  const FONT_WEIGHT = "bold";
+  const COLOR_TEXT = "#eee";
+  const COLOR_BACKGROUND = "#1a1a2e";
+  const BLUR_AMOUNT = 10;
+
+  const currentWordIndex = Math.floor(frame / WORD_DURATION) % WORDS.length;
+  const frameInWord = frame % WORD_DURATION;
+
+  // Fade in/out animation
+  const opacity = interpolate(
+    frameInWord,
+    [0, FADE_IN_DURATION, FADE_OUT_START, WORD_DURATION],
+    [0, 1, 1, 0],
+    { extrapolateRight: "clamp" }
+  );
+
+  // Scale animation
+  const scale = interpolate(
+    frameInWord,
+    [0, FADE_IN_DURATION, FADE_OUT_START, WORD_DURATION],
+    [0.8, 1, 1, 1.2],
+    { extrapolateRight: "clamp" }
+  );
+
+  // Blur animation
+  const blur = interpolate(
+    frameInWord,
+    [0, FADE_IN_DURATION, FADE_OUT_START, WORD_DURATION],
+    [BLUR_AMOUNT, 0, 0, BLUR_AMOUNT],
+    { extrapolateRight: "clamp" }
+  );
+
+  return (
+    <AbsoluteFill
+      style={{
+        backgroundColor: COLOR_BACKGROUND,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <h1
+        style={{
+          fontSize: FONT_SIZE,
+          fontWeight: FONT_WEIGHT,
+          color: COLOR_TEXT,
+          opacity,
+          transform: `scale(${scale})`,
+          filter: `blur(${blur}px)`,
+          fontFamily: "system-ui, sans-serif",
+        }}
+      >
+        {WORDS[currentWordIndex]}
+      </h1>
+    </AbsoluteFill>
+  );
+};
+```
+
+## What This Snippet Demonstrates
+
+<AccordionGroup>
+  <Accordion title="Multi-Stage Interpolation">
+    Uses `interpolate()` with 4 keyframes to create complex fade-in, hold, fade-out sequences with precise timing control.
+  </Accordion>
+
+  <Accordion title="Blur Transitions">
+    Applies blur during entrance and exit for a dreamy, cinematic dissolve effect instead of a simple opacity fade.
+  </Accordion>
+
+  <Accordion title="Scale Animation">
+    Combines scale with opacity and blur—words start small (0.8), normalize to 1.0, then expand (1.2) as they exit.
+  </Accordion>
+
+  <Accordion title="Cycling Logic">
+    Uses modulo (`%`) arithmetic to loop through words indefinitely, perfect for continuous playback.
+  </Accordion>
+</AccordionGroup>
+
+## Key Concepts
+
+**Frame-Based Timing**: Each word occupies `WORD_DURATION` frames, with `frameInWord` tracking position within the current word's cycle.
+
+**Interpolation Keyframes**: The pattern `[0, 15, 45, 60]` creates:
+- 0-15: Fade in with blur and scale
+- 15-45: Hold at full opacity, normal scale, no blur
+- 45-60: Fade out with blur and expanding scale
+
+**Modulo Cycling**: `Math.floor(frame / WORD_DURATION) % WORDS.length` ensures words cycle endlessly without manual looping.
+
+## When to Use This Pattern
+
+- Tagline presentations with multiple messages
+- Product feature highlights (e.g., "Fast", "Secure", "Reliable")
+- Brand value statements
+- Quote rotations
+- Transition slides between sections
+
+## Customization Tips
+
+<Tabs>
+  <Tab title="Timing">
+    Adjust `WORD_DURATION` (total frames per word), `FADE_IN_DURATION` (entrance speed), and `FADE_OUT_START` (when exit begins).
+  </Tab>
+  <Tab title="Effects">
+    Increase `BLUR_AMOUNT` for softer transitions, or change scale values (try `[0.6, 1, 1]` for no exit scale).
+  </Tab>
+  <Tab title="Visual Style">
+    Modify colors, font size, weight, or add `textAlign: "center"` and `padding` for multi-line text.
+  </Tab>
+  <Tab title="Words">
+    Replace the `WORDS` array with your content. Works well with 2-8 words; longer lists may feel repetitive.
+  </Tab>
+</Tabs>
+
+<Info>
+For more variation, you can randomize scale or blur amounts per word, or add rotation (`rotateZ`) to the transform for dynamic angles.
+</Info>
+
+<Tip>
+Pair this with background music or sound effects timed to `WORD_DURATION` for enhanced impact. Consider adding a subtle particle effect or gradient shift for premium polish.
+</Tip>

@@ -1,0 +1,235 @@
+---
+title: 'Typewriter with Highlight'
+description: 'Typewriter effect with blinking cursor and spring-animated word highlight'
+---
+
+## Overview
+
+This code snippet combines a classic typewriter effect with a blinking cursor, followed by a smooth highlight that animates behind a specific word. It demonstrates advanced layering techniques to create polished, production-ready text animations.
+
+## Complete Code
+
+```tsx
+import React from "react";
+import {
+  useCurrentFrame,
+  useVideoConfig,
+  AbsoluteFill,
+  interpolate,
+  spring,
+} from "remotion";
+
+export const MyAnimation = () => {
+  const frame = useCurrentFrame();
+  const { fps, width } = useVideoConfig();
+
+  const COLOR_BG = "#FFFFFF";
+  const COLOR_TEXT = "#000000";
+  const COLOR_HIGHLIGHT = "#FFE44D";
+
+  const FULL_TEXT = "Hello world";
+  const HIGHLIGHT_WORD = "world";
+  const CARET_SYMBOL = "▌";
+
+  const FONT_SIZE = Math.max(56, Math.round(width * 0.075));
+  const FONT_WEIGHT = 800;
+
+  const CHAR_FRAMES = 3;
+  const CURSOR_BLINK_FRAMES = 16;
+  const HIGHLIGHT_DELAY = 10;
+
+  const entranceProgress = spring({
+    fps,
+    frame,
+    config: { damping: 18, stiffness: 140, mass: 0.9 },
+    durationInFrames: 22,
+  });
+
+  const containerOpacity = interpolate(entranceProgress, [0, 1], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const typedChars = Math.min(
+    FULL_TEXT.length,
+    Math.floor(frame / CHAR_FRAMES),
+  );
+  const typedText = FULL_TEXT.slice(0, typedChars);
+  const typingDone = typedChars >= FULL_TEXT.length;
+
+  const caretOpacity = interpolate(
+    frame % CURSOR_BLINK_FRAMES,
+    [0, CURSOR_BLINK_FRAMES / 2, CURSOR_BLINK_FRAMES],
+    [1, 0, 1],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+
+  const typeEndFrame = FULL_TEXT.length * CHAR_FRAMES;
+  const highlightStart = typeEndFrame + HIGHLIGHT_DELAY;
+
+  const finalLayerOpacity = frame >= highlightStart ? 1 : 0;
+
+  const highlightWordIndex = FULL_TEXT.indexOf(HIGHLIGHT_WORD);
+  const hasHighlight = highlightWordIndex >= 0;
+
+  const preText = hasHighlight ? FULL_TEXT.slice(0, highlightWordIndex) : "";
+  const postText = hasHighlight
+    ? FULL_TEXT.slice(highlightWordIndex + HIGHLIGHT_WORD.length)
+    : "";
+
+  const highlightProgress = spring({
+    fps,
+    frame: frame - highlightStart,
+    config: { damping: 22, stiffness: 180, mass: 0.9 },
+    durationInFrames: 22,
+  });
+
+  const highlightScaleX = interpolate(highlightProgress, [0, 1], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  return (
+    <AbsoluteFill
+      style={{
+        backgroundColor: COLOR_BG,
+        fontFamily: "Inter, sans-serif",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          opacity: containerOpacity,
+        }}
+      >
+        {/* Typewriter layer */}
+        <div
+          style={{
+            color: COLOR_TEXT,
+            fontSize: FONT_SIZE,
+            fontWeight: FONT_WEIGHT,
+            whiteSpace: "pre",
+          }}
+        >
+          <span>{typedText}</span>
+          {!typingDone && (
+            <span style={{ opacity: caretOpacity }}>{CARET_SYMBOL}</span>
+          )}
+        </div>
+
+        {/* Final highlighted layer */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            color: COLOR_TEXT,
+            fontSize: FONT_SIZE,
+            fontWeight: FONT_WEIGHT,
+            whiteSpace: "pre",
+            opacity: finalLayerOpacity,
+          }}
+        >
+          {hasHighlight ? (
+            <>
+              <span>{preText}</span>
+              <span style={{ position: "relative", display: "inline-block" }}>
+                <span
+                  style={{
+                    position: "absolute",
+                    left: "-0.12em",
+                    right: "-0.12em",
+                    top: "50%",
+                    height: "1.05em",
+                    transform: `translateY(-50%) scaleX(${highlightScaleX})`,
+                    transformOrigin: "left center",
+                    backgroundColor: COLOR_HIGHLIGHT,
+                    borderRadius: "0.2em",
+                    zIndex: 0,
+                  }}
+                />
+                <span style={{ position: "relative", zIndex: 1 }}>
+                  {HIGHLIGHT_WORD}
+                </span>
+              </span>
+              <span>{postText}</span>
+            </>
+          ) : (
+            <span>{FULL_TEXT}</span>
+          )}
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+```
+
+## What This Snippet Demonstrates
+
+<AccordionGroup>
+  <Accordion title="Dual-Layer Technique">
+    Uses two text layers—one for typing with cursor, one for the final highlighted state—to achieve smooth transitions without flickering.
+  </Accordion>
+
+  <Accordion title="Smooth Cursor Blink">
+    The cursor fades in/out using `interpolate()` with a sine-like pattern for natural blinking, not abrupt on/off.
+  </Accordion>
+
+  <Accordion title="Spring-Animated Highlight">
+    The yellow highlight expands from left to right using `scaleX` with spring physics for organic, bouncy motion.
+  </Accordion>
+
+  <Accordion title="Responsive Sizing">
+    Font size scales with video width (`width * 0.075`) to ensure text looks good at any resolution.
+  </Accordion>
+</AccordionGroup>
+
+## Key Concepts
+
+**Character-by-Character Reveal**: 
+```tsx
+const typedChars = Math.min(FULL_TEXT.length, Math.floor(frame / CHAR_FRAMES));
+const typedText = FULL_TEXT.slice(0, typedChars);
+```
+Each character appears every 3 frames for smooth typing speed.
+
+**Layer Crossfade**: When typing finishes, the highlight layer fades in (`finalLayerOpacity = 1`) while the typewriter layer remains visible underneath.
+
+**Highlight Positioning**: The highlight uses absolute positioning with `transformOrigin: "left center"` and `scaleX` to expand from left edge.
+
+**Spring Timing**: Delays highlight by 10 frames after typing ends, then animates over 22 frames with bounce.
+
+## When to Use This Pattern
+
+- Call-to-action text with emphasis on key words
+- Tutorial or instructional content highlighting important terms
+- Brand messaging with hero words
+- Quote animations emphasizing the punchline
+- Educational content drawing attention to key concepts
+
+## Customization Tips
+
+<Tabs>
+  <Tab title="Text & Target">
+    Change `FULL_TEXT` and `HIGHLIGHT_WORD` (must be substring). Adjust `CHAR_FRAMES` for faster/slower typing.
+  </Tab>
+  <Tab title="Colors">
+    Modify `COLOR_HIGHLIGHT` for different emphasis (try `#00ff88` for green, `#ff6b6b` for red). Change background color for different moods.
+  </Tab>
+  <Tab title="Cursor">
+    Replace `CARET_SYMBOL` with `"|"` or `"_"`, or adjust `CURSOR_BLINK_FRAMES` for faster/slower blinking.
+  </Tab>
+  <Tab title="Animation">
+    Tune spring config (`damping`, `stiffness`) for bouncier or smoother highlight. Increase `HIGHLIGHT_DELAY` for longer pause.
+  </Tab>
+</Tabs>
+
+<Warning>
+Ensure `HIGHLIGHT_WORD` exists in `FULL_TEXT` exactly as written. If not found, the entire text displays without highlight.
+</Warning>
+
+<Tip>
+For multiple highlighted words, duplicate the highlight logic and layer additional absolute-positioned highlights with different delays and colors.
+</Tip>

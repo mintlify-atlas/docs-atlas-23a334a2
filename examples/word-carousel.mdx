@@ -1,0 +1,200 @@
+---
+title: 'Word Carousel'
+description: 'Rotating words with crossfade and blur transitions'
+---
+
+## Overview
+
+This code snippet creates a word carousel where a rotating set of words smoothly crossfade with blur effects. It maintains a stable layout width and demonstrates elegant multi-word animations perfect for hero sections or taglines.
+
+## Complete Code
+
+```tsx
+import { useCurrentFrame, AbsoluteFill, interpolate } from "remotion";
+
+export const MyAnimation = () => {
+  const frame = useCurrentFrame();
+
+  const COLOR_TEXT = "#7b92c1";
+  const PREFIX = "Created for";
+  const WORDS = ["Creators", "Marketers", "Developers", "Everyone"];
+
+  const PREFIX_FONT_SIZE = 80;
+  const WORD_FONT_SIZE = 80;
+  const PREFIX_WEIGHT = 300;
+  const WORD_WEIGHT = 700;
+  const WORD_GAP = 20;
+  const HOLD_DURATION = 32;
+  const FLIP_DURATION = 18;
+  const BLUR_AMOUNT = 6;
+
+  const perStep = HOLD_DURATION + FLIP_DURATION;
+  const totalSteps = WORDS.length;
+  const currentStep = Math.floor(frame / perStep) % totalSteps;
+  const nextStep = (currentStep + 1) % totalSteps;
+  const phase = frame % perStep;
+  const isFlipping = phase >= HOLD_DURATION;
+  const flipProgress = isFlipping ? (phase - HOLD_DURATION) / FLIP_DURATION : 0;
+
+  const outOpacity = interpolate(flipProgress, [0, 1], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const inOpacity = interpolate(flipProgress, [0, 1], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const outBlur = interpolate(flipProgress, [0, 1], [0, BLUR_AMOUNT], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const inBlur = interpolate(flipProgress, [0, 1], [BLUR_AMOUNT, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const longestWord = WORDS.reduce(
+    (a, b) => (a.length >= b.length ? a : b),
+    WORDS[0],
+  );
+
+  return (
+    <AbsoluteFill
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: WORD_GAP,
+          color: COLOR_TEXT,
+        }}
+      >
+        <div style={{ fontSize: PREFIX_FONT_SIZE, fontWeight: PREFIX_WEIGHT }}>
+          {PREFIX}
+        </div>
+        <div
+          style={{
+            position: "relative",
+            fontSize: WORD_FONT_SIZE,
+            fontWeight: WORD_WEIGHT,
+          }}
+        >
+          {/* Invisible width keeper */}
+          <div style={{ visibility: "hidden" }}>{longestWord}</div>
+          {/* Current word (fades out during flip) */}
+          {!isFlipping && (
+            <div style={{ position: "absolute", left: 0, top: 0 }}>
+              {WORDS[currentStep]}
+            </div>
+          )}
+          {/* Crossfade during flip */}
+          {isFlipping && (
+            <>
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  opacity: outOpacity,
+                  filter: `blur(${outBlur}px)`,
+                }}
+              >
+                {WORDS[currentStep]}
+              </div>
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  opacity: inOpacity,
+                  filter: `blur(${inBlur}px)`,
+                }}
+              >
+                {WORDS[nextStep]}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </AbsoluteFill>
+  );
+};
+```
+
+## What This Snippet Demonstrates
+
+<AccordionGroup>
+  <Accordion title="Stable Layout Width">
+    Uses an invisible "width keeper" element set to the longest word, preventing layout shifts during word transitions.
+  </Accordion>
+
+  <Accordion title="Smooth Crossfade">
+    During transitions, both words render simultaneously with inverse opacity, creating a seamless blend without gaps.
+  </Accordion>
+
+  <Accordion title="Blur Transitions">
+    Applies blur to outgoing words (increasing) and incoming words (decreasing) for a dreamy, cinematic effect.
+  </Accordion>
+
+  <Accordion title="Hold and Flip Phases">
+    Divides each word cycle into a "hold" phase (word visible at full opacity) and "flip" phase (crossfade transition).
+  </Accordion>
+</AccordionGroup>
+
+## Key Concepts
+
+**Phase-Based Animation**:
+```tsx
+const phase = frame % perStep;
+const isFlipping = phase >= HOLD_DURATION;
+```
+Each word has a hold period (32 frames) followed by a flip period (18 frames).
+
+**Crossfade Logic**: During flips, two words render with opposite opacity curves—one fading out, one fading in.
+
+**Width Stabilization**: The longest word determines container width, so shorter words don't cause horizontal jumping.
+
+**Baseline Alignment**: Using `alignItems: "baseline"` ensures the prefix and rotating word sit on the same text baseline.
+
+## When to Use This Pattern
+
+- Hero sections with rotating taglines (e.g., "Built for X")
+- Product feature highlights with multiple audiences
+- Mission statements with multiple values
+- Call-to-action banners with rotating benefits
+- Header animations for landing pages
+
+## Customization Tips
+
+<Tabs>
+  <Tab title="Timing">
+    Adjust `HOLD_DURATION` (how long each word displays) and `FLIP_DURATION` (transition speed). Try 40/15 for slower, punchier transitions.
+  </Tab>
+  <Tab title="Effects">
+    Increase `BLUR_AMOUNT` for softer transitions (try 10-12px), or set to 0 for sharp crossfades. Add scale or rotation to the transform.
+  </Tab>
+  <Tab title="Words">
+    Update the `WORDS` array with your content. Works best with 3-6 words of similar length to minimize width changes.
+  </Tab>
+  <Tab title="Style">
+    Change font weights, colors, or add `textTransform: "uppercase"` for impact. Modify `WORD_GAP` to adjust spacing.
+  </Tab>
+</Tabs>
+
+<Info>
+The invisible width keeper ensures the layout doesn't shift when words change. If you want centered text without this, use `textAlign: "center"` and accept slight horizontal movement.
+</Info>
+
+<Tip>
+For extra polish, add a subtle scale animation to the rotating words (e.g., scale from 0.95 to 1.0 during fade-in) to create depth and emphasis.
+</Tip>
+
+<Note>
+This pattern works well with 4-8 words. For longer lists, consider grouping related words or using a different transition style to maintain viewer engagement.
+</Note>

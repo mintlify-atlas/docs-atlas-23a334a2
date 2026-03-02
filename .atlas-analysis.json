@@ -122,9 +122,9 @@
   "publicApiSurface": [
     "POST /api/generate - Generate Remotion code from prompts",
     "POST /api/lambda/render - Trigger cloud video rendering",
-    "GET /api/lambda/progress - Check render job status",
+    "POST /api/lambda/progress - Check render job status",
     "Skills: charts, typography, messaging, transitions, sequencing, spring-physics, social-media, 3d",
     "Example animations: typewriter, chat-bubbles, counters, bar-chart, dvd-screensaver",
-    "Code snippets: histogram, progress-bar, lottie-animation, word-carousel, falling-spheres"
+    "Code snippets: animated-shapes, histogram, progress-bar, lottie-animation, falling-spheres, gold-price-chart, text-rotation, typewriter-highlight, word-carousel"
   ]
 }

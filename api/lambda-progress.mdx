@@ -3,13 +3,9 @@ title: 'Lambda Progress'
 description: 'Check the status and progress of Lambda render jobs'
 ---
 
-## GET /api/lambda/progress
+## POST /api/lambda/progress
 
 Checks the rendering progress of a video job initiated via the `/api/lambda/render` endpoint. This endpoint should be polled periodically until the render is complete.
-
-<Note>
-This is actually a POST endpoint in the implementation (located at `src/app/api/lambda/progress/route.ts`), but functions as a progress check. Poll this endpoint every few seconds to track render progress.
-</Note>
 
 ### Request Body
 

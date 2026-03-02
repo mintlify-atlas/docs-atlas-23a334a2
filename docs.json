@@ -112,7 +112,12 @@
               "examples/animated-shapes",
               "examples/histogram",
               "examples/progress-bar",
-              "examples/lottie-animations"
+              "examples/lottie-animations",
+              "examples/falling-spheres",
+              "examples/gold-price-chart",
+              "examples/text-rotation",
+              "examples/typewriter-highlight",
+              "examples/word-carousel"
             ]
           }
         ]
